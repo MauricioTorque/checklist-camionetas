@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#17202A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Checklist">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="config.js"></script>
+</head>
+<body><title>Checklist Camionetas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: herramienta de terreno de una columna (máx. 640px), barra superior con estado de señal,
+   pasos uno por pantalla y botonera fija abajo al alcance del pulgar. Ámbar de baliza como acento. */
+:root {
+  --bg: #EEF0EC;
+  --surface: #FFFFFF;
+  --sunk: #E3E7E1;
+  --ink: #17202A;
+  --muted: #586370;
+  --line: #CDD3CC;
+  --accent: #F2A900;
+  --accent-ink: #1C1400;
+  --ok: #1D7549;
+  --ok-bg: #E1F1E7;
+  --bad: #B3302A;
+  --bad-bg: #FAE4E1;
+  --warn: #8F5600;
+  --warn-bg: #FFF0D2;
+  --focus: #1F5FBF;
+  --paper: #FFFFFF;
+  --bar: #17202A;
+  --bar-fg: #EEF0EC;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161B; --surface: #1A2128; --sunk: #232B33; --ink: #E8ECEF; --muted: #9AA4AE; --line: #2E3740;
+    --accent: #F5B730; --accent-ink: #1C1400; --ok: #49C285; --ok-bg: #16301F; --bad: #F06A60; --bad-bg: #3A1B19;
+    --warn: #F0B455; --warn-bg: #352812; --focus: #7FB0FF; --paper: #FFFFFF; --bar: #0B0F13; --bar-fg: #E8ECEF; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161B; --surface: #1A2128; --sunk: #232B33; --ink: #E8ECEF; --muted: #9AA4AE; --line: #2E3740;
+  --accent: #F5B730; --accent-ink: #1C1400; --ok: #49C285; --ok-bg: #16301F; --bad: #F06A60; --bad-bg: #3A1B19;
+  --warn: #F0B455; --warn-bg: #352812; --focus: #7FB0FF; --paper: #FFFFFF; --bar: #0B0F13; --bar-fg: #E8ECEF; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 17px; line-height: 1.45; margin: 0; -webkit-tap-highlight-color: transparent; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; }
+
+/* Barra superior */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bar); color: var(--bar-fg); }
+.bar-in { display: flex; align-items: center; gap: 10px; min-height: 54px; }
+.brand { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 700; font-size: 19px; letter-spacing: .02em; text-transform: uppercase; line-height: 1; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.brand i { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.bar-sp { flex: 1; }
+.pill { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 99px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.net-on { background: color-mix(in srgb, var(--ok) 30%, transparent); color: #9BE3BC; }
+.net-off { background: color-mix(in srgb, var(--accent) 28%, transparent); color: #FFD77A; }
+.bar-x { all: unset; cursor: pointer; font-size: 14px; font-weight: 600; padding: 6px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--bar-fg) 30%, transparent); }
+.prog { padding-bottom: 10px; }
+.prog-t { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; opacity: .85; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+.prog-b { display: flex; gap: 3px; }
+.prog-b span { flex: 1; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--bar-fg) 22%, transparent); }
+.prog-b span.done { background: var(--accent); }
+.prog-b span.cur { background: var(--bar-fg); }
+
+main { padding-block: 18px 140px; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 { font-size: 32px; font-weight: 700; text-transform: uppercase; letter-spacing: .01em; }
+h2 { font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+h3 { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+p { margin: 0; }
+.lead { color: var(--muted); }
+.small { font-size: 14px; color: var(--muted); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.banner { border-radius: var(--r); padding: 12px 14px; font-size: 15px; display: flex; flex-direction: column; gap: 4px; }
+.banner b { font-weight: 600; }
+.banner.info { background: var(--sunk); }
+.banner.warn { background: var(--warn-bg); color: var(--warn); }
+.banner.bad { background: var(--bad-bg); color: var(--bad); }
+
+/* Botones */
+.btn { appearance: none; border: 0; border-radius: var(--r); min-height: 52px; padding: 0 18px; font-family: var(--f-display); font-weight: 700; font-size: 19px; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn.dark { background: var(--ink); color: var(--bg); }
+.btn.danger { background: var(--bad); color: #fff; }
+.btn.block { width: 100%; }
+.btn.sm { min-height: 40px; font-size: 16px; padding: 0 14px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > * { flex: 1 1 140px; }
+
+/* Formularios */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-weight: 600; font-size: 15px; }
+.field small { color: var(--muted); font-size: 13.5px; }
+.input { width: 100%; min-height: 50px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--surface); font-size: 17px; }
+textarea.input { min-height: 84px; resize: vertical; }
+.invalid .input, .input.invalid { border-color: var(--bad); background: var(--bad-bg); }
+.err-t { color: var(--bad); font-size: 14px; font-weight: 600; }
+.chk { display: flex; gap: 10px; align-items: flex-start; font-size: 15.5px; cursor: pointer; }
+.chk input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+.seg.wrap { grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
+.seg button { appearance: none; min-height: 50px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 600; font-size: 16.5px; cursor: pointer; padding: 0 6px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.seg button.v-ok[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #fff; }
+.seg button.v-bad[aria-pressed="true"] { background: var(--bad); border-color: var(--bad); color: #fff; }
+.seg button.v-na[aria-pressed="true"] { background: var(--muted); border-color: var(--muted); color: var(--bg); }
+
+/* Patente estilo placa chilena */
+.plate { display: inline-flex; flex-direction: column; align-items: center; background: var(--paper); color: #111; border: 2px solid #111; border-radius: 6px; padding: 1px 8px 2px; line-height: 1; flex: none; }
+.plate small { font-family: var(--f-body); font-size: 7.5px; font-weight: 600; letter-spacing: .3em; padding-left: .3em; }
+.plate b { font-family: var(--f-display); font-weight: 700; font-size: 21px; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.plate.lg b { font-size: 34px; }
+.plate.lg small { font-size: 10px; }
+
+/* Ítems del checklist */
+.cat-h { display: flex; flex-direction: column; gap: 6px; }
+.cat-tools { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.count { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--muted); font-size: 15px; }
+.items { display: flex; flex-direction: column; gap: 10px; }
+.item { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--line); border-radius: var(--r); padding: 14px 14px 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.item.is-ok { border-left-color: var(--ok); }
+.item.is-bad { border-left-color: var(--bad); }
+.item.is-na { border-left-color: var(--muted); }
+.item.invalid { border-color: var(--bad); border-left-color: var(--bad); box-shadow: 0 0 0 1px var(--bad); }
+.item-h { display: flex; gap: 10px; align-items: flex-start; }
+.num { font-family: var(--f-display); font-weight: 700; font-size: 15px; color: var(--muted); min-width: 22px; padding-top: 2px; font-variant-numeric: tabular-nums; }
+.q { flex: 1; min-width: 0; font-weight: 500; }
+.tag { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 5px; flex: none; white-space: nowrap; }
+.tag.crit { background: var(--bad-bg); color: var(--bad); }
+.tag.ok { background: var(--ok-bg); color: var(--ok); }
+.tag.warn { background: var(--warn-bg); color: var(--warn); }
+.tag.na { background: var(--sunk); color: var(--muted); }
+.aviso { font-size: 14px; font-weight: 600; }
+.aviso.bad { color: var(--bad); } .aviso.warn { color: var(--warn); }
+.fallo { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
+
+/* Fotos */
+.photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.ph { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--sunk); max-width: 100%; }
+.ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ph button { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,.65); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
+.ph-add { aspect-ratio: 1; border-radius: 8px; border: 1.5px dashed var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; color: var(--muted); font-size: 13.5px; font-weight: 600; text-align: center; padding: 6px; }
+.ph-add b { font-size: 26px; line-height: 1; font-weight: 500; }
+.ph-add input, .photo-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.photo-btn { position: relative; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; color: var(--ink); cursor: pointer; padding: 8px 12px; border: 1.5px dashed var(--line); border-radius: 8px; align-self: flex-start; }
+.thumb { width: 84px; height: 84px; }
+
+/* Firma */
+.sig-box { position: relative; background: var(--paper); border-radius: 8px; border: 1.5px solid var(--line); }
+.sig-box canvas { display: block; width: 100%; height: 190px; touch-action: none; cursor: crosshair; border-radius: 8px; }
+.sig-line { position: absolute; left: 16px; right: 16px; bottom: 40px; border-bottom: 1.5px solid #9AA3AB; pointer-events: none; }
+.sig-hint { position: absolute; left: 16px; bottom: 14px; font-size: 13px; color: #6B747C; pointer-events: none; }
+.sig-box.invalid { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad); }
+.sig-img { background: var(--paper); border-radius: 8px; border: 1px solid var(--line); max-width: 100%; display: block; }
+
+/* Resultado */
+.res { border-radius: var(--r); padding: 18px 16px; display: flex; flex-direction: column; gap: 6px; }
+.res .k { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+.res .v { font-family: var(--f-display); font-weight: 700; font-size: 38px; line-height: 1; text-transform: uppercase; letter-spacing: .01em; }
+.res.APTA { background: var(--ok); color: #fff; }
+.res.OBS { background: var(--warn-bg); color: var(--warn); border: 1.5px solid currentColor; }
+.res.NO { background: var(--bad); color: #fff; }
+.flist { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flist li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+.flist li:first-child { border-top: 0; padding-top: 0; }
+.flist .q { display: flex; flex-direction: column; gap: 2px; }
+.flist .q small { color: var(--muted); font-size: 14px; }
+
+/* Inicio */
+.hero { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 15.5px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.hist { display: flex; flex-direction: column; gap: 8px; }
+.h-row { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; }
+.h-row:focus-visible { outline: 3px solid var(--focus); }
+.h-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.h-mid b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h-mid span { font-size: 14px; color: var(--muted); }
+.h-end { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.sync { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.sync.p { color: var(--warn); font-weight: 600; }
+.empty { text-align: center; color: var(--muted); padding: 22px 12px; border: 1.5px dashed var(--line); border-radius: var(--r); font-size: 15px; }
+.stat { display: flex; align-items: center; gap: 14px; }
+.stat .n { font-family: var(--f-display); font-weight: 700; font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat .t { flex: 1; min-width: 0; }
+
+/* Botonera inferior */
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.nav-in { display: flex; flex-direction: column; gap: 8px; padding-block: 10px; }
+.nav-btns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.nav-msg { color: var(--bad); font-weight: 600; font-size: 14.5px; }
+.toast { position: fixed; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; font-size: 15px; z-index: 20; max-width: calc(100% - 32px); text-align: center; }
+.ex { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--warn); background: var(--warn-bg); padding: 2px 6px; border-radius: 4px; }
+</style>
+
+<div id="app">
+  <header id="bar" class="bar"></header>
+  <main id="main" class="wrap" aria-live="polite"></main>
+  <nav id="nav" class="nav" hidden></nav>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+'use strict';
+/* ============ Configuración ============ */
+const CFG = Object.assign({
+  clientId: '', tenantId: '', redirectUri: '',
+  siteHostname: '', sitePath: '',
+  workbookPath: 'Checklists/Registro_Checklists_Camionetas.xlsx',
+  photosFolder: 'Checklists/Fotos'
+}, window.APP_CONFIG || {});
+const DEMO = !CFG.clientId || !CFG.tenantId || !CFG.siteHostname;
+const EMBED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+const STANDALONE = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const GRAPH = 'https://graph.microsoft.com/v1.0';
+const SCOPES = ['User.Read', 'Files.ReadWrite.All', 'Sites.ReadWrite.All', 'Mail.Send'];
+const MSAL_URL = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js';
+const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+
+/* Catálogo integrado: se usa hasta que la app descargue el de SharePoint */
+const BUILTIN = {
+  items: [{"Orden":1,"Categoria":"FACTORES PERSONALES","Item":"¿Se siente física y mentalmente capaz de conducir?","TipoRespuesta":"SI/NO","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":2,"Categoria":"FACTORES PERSONALES","Item":"¿Descansó lo suficiente, encontrándose en condiciones adecuadas para conducir?","TipoRespuesta":"SI/NO","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":3,"Categoria":"FACTORES PERSONALES","Item":"¿Se encuentra libre de los efectos de medicamentos que puedan inducir el sueño o afectar su capacidad de conducir?","TipoRespuesta":"SI/NO","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":4,"Categoria":"FACTORES PERSONALES","Item":"¿Se encuentra sin problemas que puedan inquietarlo, disminuir su concentración o afectar su estado de alerta?","TipoRespuesta":"SI/NO","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":5,"Categoria":"HABILITACION DEL CONDUCTOR","Item":"Licencia municipal: fecha de vencimiento","TipoRespuesta":"FECHA","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"No","Activo":"Si"},{"Orden":6,"Categoria":"HABILITACION DEL CONDUCTOR","Item":"Licencia interna: fecha de vencimiento","TipoRespuesta":"FECHA","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"No","Activo":"Si"},{"Orden":7,"Categoria":"FRONTAL","Item":"Luces de conducción, estacionamiento, intermitente, neblineros","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":8,"Categoria":"FRONTAL","Item":"Limpiaparabrisas / Depósito de agua","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":9,"Categoria":"FRONTAL","Item":"Parabrisas (vidrio frontal)","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":10,"Categoria":"FRONTAL","Item":"Sello autorización de tránsito en faena","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":11,"Categoria":"FRONTAL","Item":"Cinta reflectante","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":12,"Categoria":"LATERAL DERECHO","Item":"Logotipo Empresa lateral derecho","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":13,"Categoria":"LATERAL DERECHO","Item":"N° de identificación lateral derecho","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":14,"Categoria":"LATERAL DERECHO","Item":"Vidrios laterales derecho","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":15,"Categoria":"LATERAL DERECHO","Item":"Espejo lateral derecho","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":16,"Categoria":"LATERAL DERECHO","Item":"Trabatuercas / Check Point / Safelock","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":17,"Categoria":"LATERAL DERECHO","Item":"Cinta reflectante","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":18,"Categoria":"LATERAL DERECHO","Item":"El sensor TPMS (Sistema de Monitoreo de Presión de Neumáticos) está operativo","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":19,"Categoria":"LATERAL DERECHO","Item":"Inspección visual del estado de los neumáticos (desgaste, cortes, deformaciones)","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":20,"Categoria":"LATERAL DERECHO","Item":"Luz intermitente derecha","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":21,"Categoria":"PICKUP-CARGA","Item":"Protección entre pickup y cabina","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":22,"Categoria":"PICKUP-CARGA","Item":"Baliza (amarilla o ámbar)","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":23,"Categoria":"PICKUP-CARGA","Item":"Pértiga 4.60m / Bandera / Luz","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":24,"Categoria":"PICKUP-CARGA","Item":"Malla cubre pickup","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":25,"Categoria":"PICKUP-CARGA","Item":"Barra Antivuelco Exterior","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":26,"Categoria":"PICKUP-CARGA","Item":"Cuñas (2)","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":27,"Categoria":"PARTE TRASERA","Item":"Cinta reflectante","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":28,"Categoria":"PARTE TRASERA","Item":"Luces de retroceso, freno y patente","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":29,"Categoria":"PARTE TRASERA","Item":"Alarma de retroceso","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":30,"Categoria":"PARTE TRASERA","Item":"Neumático de repuesto","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":31,"Categoria":"PARTE TRASERA","Item":"Vidrio trasero","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":32,"Categoria":"LATERAL IZQUIERDO","Item":"Logotipo Empresa lateral izquierdo","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":33,"Categoria":"LATERAL IZQUIERDO","Item":"N° de identificación lateral izquierdo","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":34,"Categoria":"LATERAL IZQUIERDO","Item":"Vidrios laterales izquierdo","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":35,"Categoria":"LATERAL IZQUIERDO","Item":"Espejo lateral izquierdo","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":36,"Categoria":"LATERAL IZQUIERDO","Item":"Trabatuercas / Check Point / Safelock","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":37,"Categoria":"LATERAL IZQUIERDO","Item":"Cinta reflectante","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":38,"Categoria":"LATERAL IZQUIERDO","Item":"El sensor TPMS (Sistema de Monitoreo de Presión de Neumáticos) está operativo","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":39,"Categoria":"LATERAL IZQUIERDO","Item":"Inspección visual del estado de los neumáticos (desgaste, cortes, deformaciones)","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":40,"Categoria":"LATERAL IZQUIERDO","Item":"Luz intermitente izquierda","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":41,"Categoria":"EQUIPAMIENTO","Item":"Gata y herramientas","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":42,"Categoria":"EQUIPAMIENTO","Item":"Extintor","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":43,"Categoria":"EQUIPAMIENTO","Item":"Botiquín","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":44,"Categoria":"EQUIPAMIENTO","Item":"Triángulos reflectantes (3)","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":45,"Categoria":"EQUIPAMIENTO","Item":"Radio base","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":46,"Categoria":"EQUIPAMIENTO","Item":"Sistema de control de fatiga y somnolencia","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":47,"Categoria":"EQUIPAMIENTO","Item":"Barra Antivuelco interior","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":48,"Categoria":"EQUIPAMIENTO","Item":"Chaleco Amarillo","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":49,"Categoria":"EQUIPAMIENTO","Item":"Guantes de cabritilla (carga de combustible)","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":50,"Categoria":"CABINA","Item":"Aire Acondicionado","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":51,"Categoria":"CABINA","Item":"Freno de mano","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":52,"Categoria":"CABINA","Item":"Sistema de frenos","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":53,"Categoria":"CABINA","Item":"Espejo interno","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":54,"Categoria":"CABINA","Item":"Airbags conductor y copiloto","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":55,"Categoria":"CABINA","Item":"Sistemas de proximidad y desvío de carril","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":56,"Categoria":"CABINA","Item":"Velocidad crucero","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":57,"Categoria":"CABINA","Item":"¿Ajustó el asiento, espejos y elementos del vehículo a sus características físicas?","TipoRespuesta":"SI/NO","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":58,"Categoria":"CABINA","Item":"Bocina","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":59,"Categoria":"CABINA","Item":"Cinturones de seguridad","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":60,"Categoria":"CABINA","Item":"Verificación de estado de integraciones Tracktec (F\u0026S/GPS-Ibutton)","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":61,"Categoria":"CABINA","Item":"Verificar vigencia de acreditación de camioneta","TipoRespuesta":"B/M/N-A","Opciones":"","OpcionesFalla":"","Critico":"Si","AplicaA":"TODOS","ObsObligatoria":"Si","Activo":"Si"},{"Orden":62,"Categoria":"CABINA","Item":"Nivel de combustible","TipoRespuesta":"OPCION_UNICA","Opciones":"Lleno;3/4;1/2;1/4;Reserva","OpcionesFalla":"Reserva","Critico":"No","AplicaA":"TODOS","ObsObligatoria":"No","Activo":"Si"},{"Orden":63,"Categoria":"CABINA","Item":"Porcentaje de carga de batería (híbridos)","TipoRespuesta":"OPCION_UNICA","Opciones":"Cargada;En carga;Descargada","OpcionesFalla":"Descargada","Critico":"No","AplicaA":"HIBRIDO","ObsObligatoria":"No","Activo":"Si"}],
+  vehiculos: [
+    { Patente: 'PLRT21', NInterno: 'CM-014', MarcaModelo: 'Toyota Hilux 2.4 (EJEMPLO)', TipoMotor: 'DIESEL', Faena: 'Faena Norte', Activo: 'Si' },
+    { Patente: 'KXJB64', NInterno: 'CM-022', MarcaModelo: 'Mitsubishi L200 (EJEMPLO)', TipoMotor: 'DIESEL', Faena: 'Faena Norte', Activo: 'Si' },
+    { Patente: 'HGTS38', NInterno: 'CM-031', MarcaModelo: 'Ford Ranger Hybrid (EJEMPLO)', TipoMotor: 'HIBRIDO', Faena: 'Faena Sur', Activo: 'Si' }
+  ],
+  responsables: [
+    { Faena: 'TODAS', Nombre: 'Responsable de flota (EJEMPLO)', Correo: 'reemplazar@empresa.cl', AvisarNoApta: 'Si', AvisarObservaciones: 'No', Activo: 'Si' },
+    { Faena: 'Faena Norte', Nombre: 'Supervisor Norte (EJEMPLO)', Correo: 'reemplazar.norte@empresa.cl', AvisarNoApta: 'Si', AvisarObservaciones: 'Si', Activo: 'Si' }
+  ]
+};
+
+/* ============ Utilidades ============ */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const yes = v => String(v ?? '').trim().toLowerCase().startsWith('s');
+const p2 = n => String(n).padStart(2, '0');
+const fmtDT = ts => { const d = new Date(ts); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const fmtCorto = ts => { const d = new Date(ts); return `${p2(d.getDate())}-${p2(d.getMonth() + 1)} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const fmtFecha = s => { if (!s) return ''; const [y, m, d] = s.split('-'); return `${d}-${m}-${y}`; };
+const splitOpts = s => String(s || '').split(';').map(x => x.trim()).filter(Boolean);
+const normPat = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const fmtPat = s => { const p = normPat(s); return p.length === 6 ? `${p.slice(0, 2)}·${p.slice(2, 4)}·${p.slice(4)}` : (p || '— — —'); };
+const plate = (s, lg) => `<span class="plate${lg ? ' lg' : ''}"><small>CHILE</small><b>${esc(fmtPat(s))}</b></span>`;
+function daysUntil(s) { const [y, m, d] = s.split('-').map(Number); const t = new Date(y, m - 1, d); const n = new Date(); n.setHours(0, 0, 0, 0); return Math.round((t - n) / 86400000); }
+function loadScript(src) { return new Promise((res, rej) => { if ([...document.scripts].some(s => s.src === src)) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('No se pudo cargar ' + src)); document.head.appendChild(s); }); }
+function genId() { const d = new Date(); return `CK-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`; }
+
+const CAT_NAMES = { 'FACTORES PERSONALES': 'Factores personales', 'HABILITACION DEL CONDUCTOR': 'Habilitación del conductor', 'FRONTAL': 'Frontal', 'LATERAL DERECHO': 'Lateral derecho', 'PICKUP-CARGA': 'Pickup / carga', 'PARTE TRASERA': 'Parte trasera', 'LATERAL IZQUIERDO': 'Lateral izquierdo', 'EQUIPAMIENTO': 'Equipamiento', 'CABINA': 'Cabina' };
+const catName = c => CAT_NAMES[c] || (c.charAt(0) + c.slice(1).toLowerCase());
+const MOTORES = [['DIESEL', 'Diésel'], ['BENCINA', 'Bencina'], ['HIBRIDO', 'Híbrido']];
+const motorTxt = v => (MOTORES.find(m => m[0] === v) || [, v || ''])[1];
+
+/* RUT chileno: módulo 11 */
+const rutClean = s => String(s || '').toUpperCase().replace(/[^0-9K]/g, '');
+function rutValid(s) { const c = rutClean(s); if (c.length < 2) return false; const body = c.slice(0, -1), dv = c.slice(-1); if (!/^\d{6,8}$/.test(body)) return false; let sum = 0, m = 2; for (let i = body.length - 1; i >= 0; i--) { sum += +body[i] * m; m = m === 7 ? 2 : m + 1; } const r = 11 - (sum % 11); return (r === 11 ? '0' : r === 10 ? 'K' : String(r)) === dv; }
+function rutFormat(s) { const c = rutClean(s); if (c.length < 2) return s; return c.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + c.slice(-1); }
+
+/* ============ Almacenamiento en el teléfono (IndexedDB, con respaldo en memoria) ============ */
+const Store = (() => {
+  const mem = { kv: new Map(), queue: new Map() };
+  let dbp = null;
+  function open() {
+    if (dbp) return dbp;
+    dbp = new Promise(res => {
+      try {
+        const r = indexedDB.open('checklist-camionetas', 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore('kv'); r.result.createObjectStore('queue', { keyPath: 'id' }); };
+        r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    });
+    return dbp;
+  }
+  async function run(st, mode, idbOp, memOp) {
+    const d = await open();
+    if (!d) return memOp(mem[st]);
+    return new Promise(res => {
+      try { const r = idbOp(d.transaction(st, mode).objectStore(st)); r.onsuccess = () => res(r.result); r.onerror = () => res(memOp(mem[st])); }
+      catch (e) { res(memOp(mem[st])); }
+    });
+  }
+  return {
+    get: (st, k) => run(st, 'readonly', s => s.get(k), m => m.get(k)),
+    put: (st, v, k) => run(st, 'readwrite', s => st === 'queue' ? s.put(v) : s.put(v, k), m => { m.set(st === 'queue' ? v.id : k, v); }),
+    del: (st, k) => run(st, 'readwrite', s => s.delete(k), m => { m.delete(k); }),
+    all: st => run(st, 'readonly', s => s.getAll(), m => [...m.values()])
+  };
+})();
+
+/* ============ Estado ============ */
+const S = { view: 'home', step: 0, draft: null, catalog: null, profile: null, queue: [], online: navigator.onLine, syncing: false, showErr: false, detailId: null, confirmDiscard: false, lastSync: null, syncMsg: '', needsLogin: false, savedId: null };
+
+let draftTimer = null;
+function saveDraftSoon() { clearTimeout(draftTimer); draftTimer = setTimeout(() => { if (S.draft) Store.put('kv', S.draft, 'draft'); }, 400); }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2600); }
+
+/* ============ Reglas del checklist ============ */
+function applicableItems(d) {
+  if (d.items) return d.items; // registro guardado: usa la copia del catálogo del momento
+  const hib = d.vehiculo.tipoMotor === 'HIBRIDO';
+  return S.catalog.items.filter(i => yes(i.Activo) && (String(i.AplicaA || 'TODOS').toUpperCase() !== 'HIBRIDO' || hib)).sort((a, b) => a.Orden - b.Orden);
+}
+function categories(d) { const out = []; for (const i of applicableItems(d)) if (!out.includes(i.Categoria)) out.push(i.Categoria); return out; }
+function steps(d) {
+  return [{ k: 'conductor', t: 'Conductor' }, { k: 'vehiculo', t: 'Camioneta' }, ...categories(d).map(c => ({ k: 'cat', cat: c, t: catName(c) })), { k: 'extras', t: 'Fotos y observaciones' }, { k: 'firma', t: 'Resumen y firma' }];
+}
+function answerOpts(i) {
+  switch (i.TipoRespuesta) {
+    case 'SI/NO': return [['SI', 'Sí', 'v-ok'], ['NO', 'No', 'v-bad']];
+    case 'SI/NO/N-A': return [['SI', 'Sí', 'v-ok'], ['NO', 'No', 'v-bad'], ['N-A', 'N/A', 'v-na']];
+    case 'B/M/N-A': return [['B', 'Bueno', 'v-ok'], ['M', 'Malo', 'v-bad'], ['N-A', 'N/A', 'v-na']];
+    case 'OPCION_UNICA': { const f = splitOpts(i.OpcionesFalla); return splitOpts(i.Opciones).map(o => [o, o, f.includes(o) ? 'v-bad' : '']); }
+  }
+  return [];
+}
+function evalItem(i, r) {
+  if (!r || r.v == null || r.v === '') return { estado: 'PEND' };
+  switch (i.TipoRespuesta) {
+    case 'SI/NO': case 'SI/NO/N-A': return { estado: r.v === 'NO' ? 'FALLA' : r.v === 'N-A' ? 'NA' : 'OK' };
+    case 'B/M/N-A': return { estado: r.v === 'M' ? 'FALLA' : r.v === 'N-A' ? 'NA' : 'OK' };
+    case 'FECHA': {
+      const n = daysUntil(r.v);
+      if (n < 0) return { estado: 'FALLA', aviso: `Vencida hace ${-n} día${n === -1 ? '' : 's'}`, nivel: 'bad' };
+      if (n <= 30) return { estado: 'OK', aviso: n === 0 ? 'Vence hoy' : `Vence en ${n} día${n === 1 ? '' : 's'}`, nivel: 'warn' };
+      return { estado: 'OK' };
+    }
+    case 'OPCION_UNICA': return { estado: splitOpts(i.OpcionesFalla).includes(r.v) ? 'FALLA' : 'OK' };
+  }
+  return { estado: 'OK' };
+}
+function respTxt(i, r) {
+  if (!r || r.v == null || r.v === '') return '';
+  if (i.TipoRespuesta === 'FECHA') return fmtFecha(r.v);
+  return ({ B: 'Bueno', M: 'Malo', 'N-A': 'N/A', SI: 'Sí', NO: 'No' })[r.v] || r.v;
+}
+function resultado(d) {
+  const crit = [], fall = [];
+  for (const i of applicableItems(d)) { if (evalItem(i, d.resp[i.Orden]).estado === 'FALLA') { fall.push(i); if (yes(i.Critico)) crit.push(i); } }
+  return { r: crit.length ? 'NO APTA' : fall.length ? 'APTA CON OBSERVACIONES' : 'APTA', crit, fall };
+}
+const resClass = r => r === 'APTA' ? 'APTA' : r === 'NO APTA' ? 'NO' : 'OBS';
+const resTag = r => r === 'APTA' ? 'ok' : r === 'NO APTA' ? 'crit' : 'warn';
+function recipients(d, r) {
+  const faena = (d.vehiculo.faena || '').trim().toLowerCase();
+  return S.catalog.responsables.filter(x => yes(x.Activo) && x.Correo && (String(x.Faena).toUpperCase() === 'TODAS' || String(x.Faena).trim().toLowerCase() === faena)
+    && ((r === 'NO APTA' && yes(x.AvisarNoApta)) || (r === 'APTA CON OBSERVACIONES' && yes(x.AvisarObservaciones))));
+}
+function faenas() {
+  const set = new Set();
+  S.catalog.vehiculos.forEach(v => v.Faena && set.add(String(v.Faena)));
+  S.catalog.responsables.forEach(r => r.Faena && String(r.Faena).toUpperCase() !== 'TODAS' && set.add(String(r.Faena)));
+  return [...set].sort();
+}
+function fleetFind(p) { const n = normPat(p); return n ? S.catalog.vehiculos.find(v => yes(v.Activo ?? 'Si') && normPat(v.Patente) === n) : null; }
+
+/* Validación de cada paso: devuelve lista de errores */
+function validate(st, d) {
+  const e = [];
+  if (st.k === 'conductor') {
+    const c = d.conductor;
+    if (c.nombre.trim().length < 3) e.push({ f: 'nombre', m: 'Escriba su nombre completo' });
+    if (!rutValid(c.rut)) e.push({ f: 'rut', m: 'RUT no válido. Revise el dígito verificador' });
+    if (!c.area.trim()) e.push({ f: 'area', m: 'Indique su empresa o área' });
+    if (!c.turno) e.push({ f: 'turno', m: 'Seleccione el turno' });
+  } else if (st.k === 'vehiculo') {
+    const v = d.vehiculo;
+    if (normPat(v.patente).length < 5) e.push({ f: 'patente', m: 'Ingrese la patente' });
+    if (!v.tipoMotor) e.push({ f: 'tipoMotor', m: 'Seleccione el tipo de motor' });
+    if (!v.faena.trim()) e.push({ f: 'faena', m: 'Escriba o elija la faena' });
+    if (!/^\d{1,7}$/.test(String(v.km).replace(/\./g, ''))) e.push({ f: 'km', m: 'Ingrese el kilometraje (solo números)' });
+  } else if (st.k === 'cat') {
+    for (const i of applicableItems(d).filter(i => i.Categoria === st.cat)) {
+      const r = d.resp[i.Orden], ev = evalItem(i, r);
+      if (ev.estado === 'PEND') e.push({ o: i.Orden, m: 'Sin responder' });
+      else if (ev.estado === 'FALLA' && yes(i.ObsObligatoria) && !(r.obs || '').trim()) e.push({ o: i.Orden, m: 'Describa la falla' });
+    }
+  } else if (st.k === 'firma') {
+    if (!d.declara) e.push({ f: 'declara', m: 'Confirme la declaración' });
+    if (!d.firma) e.push({ f: 'firma', m: 'Falta su firma' });
+  }
+  return e;
+}
+
+/* ============ Render ============ */
+function render() {
+  renderBar();
+  const main = $('#main'), nav = $('#nav');
+  if (S.view === 'home') { main.innerHTML = homeHTML(); nav.hidden = true; }
+  else if (S.view === 'detail') { main.innerHTML = detailHTML(); nav.hidden = true; }
+  else if (S.view === 'done') { main.innerHTML = doneHTML(); nav.hidden = true; }
+  else if (S.view === 'wizard') {
+    const st = steps(S.draft)[S.step];
+    main.innerHTML = stepHTML(st);
+    nav.hidden = false; nav.innerHTML = navHTML(st);
+    if (st.k === 'firma') mountSig();
+  }
+}
+function renderBar() {
+  const pend = S.queue.filter(r => r.status === 'pendiente').length;
+  let h = `<div class="wrap"><div class="bar-in"><button class="brand" data-a="home" aria-label="Ir al inicio"><i></i>Checklist camionetas</button><span class="bar-sp"></span>`;
+  h += `<span class="pill ${S.online ? 'net-on' : 'net-off'}">${S.online ? 'Con señal' : 'Sin señal'}</span>`;
+  if (S.view === 'wizard') h += `<button class="bar-x" data-a="exit">Salir</button>`;
+  h += `</div>`;
+  if (S.view === 'wizard') {
+    const all = steps(S.draft), st = all[S.step];
+    h += `<div class="prog"><div class="prog-t"><span>${esc(st.t)}</span><span>Paso ${S.step + 1} de ${all.length}</span></div><div class="prog-b">${all.map((_, k) => `<span class="${k < S.step ? 'done' : k === S.step ? 'cur' : ''}"></span>`).join('')}</div></div>`;
+  } else if (pend && !DEMO) {
+    h += `<div class="prog"><div class="prog-t"><span>${pend} checklist${pend > 1 ? 's' : ''} por enviar${S.syncing ? ' · enviando…' : ''}</span></div></div>`;
+  }
+  $('#bar').innerHTML = h + `</div>`;
+}
+
+function homeHTML() {
+  const recs = [...S.queue].sort((a, b) => b.savedAt - a.savedAt).slice(0, 30);
+  const pend = S.queue.filter(r => r.status === 'pendiente').length;
+  let h = `<section class="hero"><h1>Checklist de camioneta</h1><p class="lead">Revise la camioneta antes de conducir. Funciona sin señal: lo que guarde se envía solo cuando vuelva la conexión.</p></section>`;
+  if (DEMO) h += `<div class="banner info"><b>Modo demostración</b><span>Los checklists se guardan solo en este teléfono y no se envían correos. Al conectar la app con SharePoint, se envían al Excel de la empresa y se avisa al responsable.</span></div>`;
+  else if (!Auth.account) h += `<div class="card"><p><b>Inicie sesión con su cuenta de la empresa</b></p><p class="small">Se hace una sola vez y necesita señal. Después la app funciona sin conexión.</p><button class="btn dark" data-a="login" ${S.online ? '' : 'disabled'}>Iniciar sesión con Microsoft</button></div>`;
+  else if (S.needsLogin) h += `<div class="banner warn"><b>Su sesión de Microsoft expiró</b><span>Los checklists siguen guardados en el teléfono. Inicie sesión para enviarlos.</span><button class="btn sm dark" data-a="login" ${S.online ? '' : 'disabled'}>Iniciar sesión</button></div>`;
+
+  if (!EMBED && !STANDALONE) {
+    if (S.installEvt) h += `<div class="card"><p><b>Instale la app en este teléfono</b></p><p class="small">Queda como un ícono en la pantalla de inicio y abre sin señal.</p><button class="btn dark" data-a="install">Instalar app</button></div>`;
+    else if (IOS) h += `<div class="banner info"><b>Instale la app en este iPhone</b><span>Toque el botón Compartir de Safari (cuadrado con flecha) y luego "Agregar a inicio".</span></div>`;
+  }
+  if (S.draft) {
+    const all = steps(S.draft);
+    h += `<div class="card"><div class="stat">${plate(S.draft.vehiculo.patente)}<div class="t"><b>Checklist sin terminar</b><p class="small">Quedó en el paso ${S.step + 1} de ${all.length}: ${esc(all[S.step].t)}</p></div></div>`;
+    h += `<button class="btn primary block" data-a="resume">Continuar checklist</button>`;
+    h += S.confirmDiscard
+      ? `<div class="row"><button class="btn danger sm" data-a="discard-yes">Sí, descartar</button><button class="btn ghost sm" data-a="discard-no">Cancelar</button></div>`
+      : `<button class="btn ghost sm" data-a="discard">Descartar y empezar otro</button>`;
+    h += `</div>`;
+  } else {
+    h += `<button class="btn primary block" data-a="new" style="min-height:64px;font-size:22px">Nuevo checklist</button>`;
+  }
+
+  if (!DEMO && S.queue.length) {
+    h += `<div class="card"><div class="stat"><span class="n">${pend}</span><div class="t"><b>${pend === 1 ? 'Checklist por enviar' : 'Checklists por enviar'}</b><p class="small">${pend ? (S.online ? (S.syncing ? 'Enviando…' : 'Se enviarán en unos segundos.') : 'Se enviarán cuando haya señal.') : 'Todo enviado a SharePoint.'}${S.lastSync ? ' Último envío: ' + fmtCorto(S.lastSync) + '.' : ''}</p></div></div>`;
+    if (S.syncMsg) h += `<p class="err-t">${esc(S.syncMsg)}</p>`;
+    if (pend) h += `<button class="btn ghost sm" data-a="sync" ${S.online && !S.syncing ? '' : 'disabled'}>Enviar ahora</button>`;
+    h += `</div>`;
+  }
+
+  h += `<h3>Últimos checklists en este teléfono</h3>`;
+  if (!recs.length) h += `<div class="empty">Aquí aparecerán los checklists que guarde, con su resultado y si ya se enviaron.</div>`;
+  else h += `<div class="hist">${recs.map(r => {
+    const s = r.status === 'enviado' ? `<span class="sync">Enviado</span>` : r.status === 'local' ? `<span class="sync">En el teléfono</span>` : `<span class="sync p">Por enviar</span>`;
+    return `<button class="h-row" data-a="open" data-id="${esc(r.id)}">${plate(r.vehiculo.patente)}<span class="h-mid"><b>${esc(r.conductor.nombre)}</b><span>${fmtCorto(r.savedAt)} · ${esc(r.vehiculo.faena)}${r.example ? ' · <span class="ex">Ejemplo</span>' : ''}</span></span><span class="h-end"><span class="tag ${resTag(r.res)}">${esc(r.res === 'APTA CON OBSERVACIONES' ? 'Con obs.' : r.res)}</span>${s}</span></button>`;
+  }).join('')}</div>`;
+
+  const src = S.catalog.source === 'sharepoint' ? `SharePoint, actualizado ${fmtCorto(S.catalog.updatedAt)}` : 'integrado en la app';
+  h += `<div class="card"><h3>Datos de la app</h3><dl class="kv"><dt>Ítems activos</dt><dd>${S.catalog.items.filter(i => yes(i.Activo)).length}</dd><dt>Camionetas</dt><dd>${S.catalog.vehiculos.length}</dd><dt>Catálogo</dt><dd>${esc(src)}</dd>${!DEMO && Auth.account ? `<dt>Cuenta</dt><dd>${esc(Auth.account.username)}</dd>` : ''}</dl><div class="row">`;
+  if (!DEMO && Auth.account) h += `<button class="btn ghost sm" data-a="refresh" ${S.online ? '' : 'disabled'}>Actualizar catálogo</button>`;
+  if (!EMBED && S.queue.length) h += `<button class="btn ghost sm" data-a="export">Exportar a Excel</button>`;
+  h += `</div></div>`;
+  return h;
+}
+
+function errOf(f) { return S.showErr ? validate(steps(S.draft)[S.step], S.draft).find(e => e.f === f) : null; }
+function fieldHTML(f, label, inner, hint) {
+  const e = errOf(f);
+  return `<label class="field${e ? ' invalid' : ''}"><span>${label}</span>${inner}${e ? `<span class="err-t">${esc(e.m)}</span>` : hint ? `<small>${hint}</small>` : ''}</label>`;
+}
+function segHTML(path, val, opts, f) {
+  const e = errOf(f);
+  return `<div class="field${e ? ' invalid' : ''}"><div class="seg" role="group">${opts.map(([v, t]) => `<button type="button" data-a="setf" data-f="${path}" data-v="${esc(v)}" aria-pressed="${val === v}">${esc(t)}</button>`).join('')}</div>${e ? `<span class="err-t">${esc(e.m)}</span>` : ''}</div>`;
+}
+
+function stepHTML(st) {
+  const d = S.draft;
+  if (st.k === 'conductor') {
+    const c = d.conductor;
+    return `<h2>Sus datos</h2>
+      ${fieldHTML('nombre', 'Nombre completo', `<input class="input" id="f-nombre" data-f="conductor.nombre" autocomplete="name" value="${esc(c.nombre)}">`)}
+      ${fieldHTML('rut', 'RUT', `<input class="input" id="f-rut" data-f="conductor.rut" inputmode="text" autocapitalize="characters" placeholder="12.345.678-5" value="${esc(c.rut)}">`)}
+      ${fieldHTML('area', 'Empresa o área', `<input class="input" id="f-area" data-f="conductor.area" placeholder="Ej.: Mantención planta" value="${esc(c.area)}">`)}
+      <div class="field"><span style="font-weight:600;font-size:15px">Turno</span>${segHTML('conductor.turno', c.turno, [['Día', 'Día'], ['Noche', 'Noche']], 'turno')}</div>
+      <label class="chk"><input type="checkbox" id="f-recordar" data-f="recordar" ${d.recordar ? 'checked' : ''}><span>Recordar mis datos en este teléfono para el próximo checklist</span></label>`;
+  }
+  if (st.k === 'vehiculo') {
+    const v = d.vehiculo, found = fleetFind(v.patente), np = normPat(v.patente);
+    const fmtOk = /^[A-Z]{4}\d{2}$|^[A-Z]{2}\d{4}$/.test(np);
+    let hint = 'Formato: ABCD12 o AB1234';
+    if (found) hint = 'Camioneta encontrada en la flota. Revise los datos.';
+    else if (np.length >= 6 && !fmtOk) hint = 'Esta patente no tiene el formato habitual. Revísela.';
+    else if (np.length >= 6) hint = 'No está en la lista de la flota. Complete los datos a mano.';
+    const fs = faenas(); if (v.faena && !fs.includes(v.faena)) fs.push(v.faena);
+    return `<h2>Camioneta</h2>
+      <div class="card" style="align-items:center">${plate(v.patente, true)}</div>
+      ${fieldHTML('patente', 'Patente', `<input class="input" id="f-patente" data-f="vehiculo.patente" list="dl-pat" autocapitalize="characters" autocomplete="off" value="${esc(v.patente)}"><datalist id="dl-pat">${S.catalog.vehiculos.map(x => `<option value="${esc(normPat(x.Patente))}">${esc(x.NInterno + ' · ' + x.MarcaModelo)}</option>`).join('')}</datalist>`, hint)}
+      <div class="row">
+        ${fieldHTML('nInterno', 'N° interno', `<input class="input" id="f-ninterno" data-f="vehiculo.nInterno" value="${esc(v.nInterno)}">`)}
+        ${fieldHTML('km', 'Kilometraje', `<input class="input" id="f-km" data-f="vehiculo.km" inputmode="numeric" placeholder="Ej.: 84500" value="${esc(v.km)}">`)}
+      </div>
+      ${fieldHTML('marcaModelo', 'Marca y modelo', `<input class="input" id="f-marca" data-f="vehiculo.marcaModelo" value="${esc(v.marcaModelo)}">`)}
+      <div class="field"><span style="font-weight:600;font-size:15px">Tipo de motor</span>${segHTML('vehiculo.tipoMotor', v.tipoMotor, MOTORES, 'tipoMotor')}</div>
+      ${fieldHTML('faena', 'Faena', `<input class="input" id="f-faena" data-f="vehiculo.faena" list="dl-faena" autocomplete="off" placeholder="Escriba o elija una faena" value="${esc(v.faena)}"><datalist id="dl-faena">${fs.map(f => `<option value="${esc(f)}"></option>`).join('')}</datalist>`, 'Puede escribir el nombre o elegir uno de la lista')}
+      ${d.geo ? `<p class="small">Ubicación registrada: ${d.geo.lat.toFixed(5)}, ${d.geo.lon.toFixed(5)}</p>` : ''}`;
+  }
+  if (st.k === 'cat') {
+    const its = applicableItems(d).filter(i => i.Categoria === st.cat);
+    const hasBM = its.some(i => i.TipoRespuesta === 'B/M/N-A');
+    const note = st.cat === 'FACTORES PERSONALES' ? `<p class="small">Responda con sinceridad. Si responde "No" a alguna, no debe conducir y se avisará a su responsable.</p>` : '';
+    return `<div class="cat-h"><h2>${esc(st.t)}</h2>${note}<div class="cat-tools"><span class="count" id="count">${countTxt(its)}</span>${hasBM ? `<button class="btn ghost sm" data-a="allgood" data-cat="${esc(st.cat)}">Marcar pendientes como Bueno</button>` : ''}</div></div>
+      <div class="items">${its.map(itemHTML).join('')}</div>`;
+  }
+  if (st.k === 'extras') {
+    return `<h2>Fotos y observaciones</h2><p class="lead">Opcional. Agregue lo que no quedó en los ítems: un golpe, una luz de tablero encendida, un ruido.</p>
+      ${fieldHTML('obs', 'Observaciones generales', `<textarea class="input" id="f-obs" data-f="extras.obs" rows="4">${esc(d.extras.obs)}</textarea>`)}
+      <div class="field"><span style="font-weight:600;font-size:15px">Fotos (hasta 6)</span><div class="photos">${d.extras.fotos.map((p, k) => `<div class="ph"><img src="${p}" alt="Foto ${k + 1}"><button data-a="delx" data-k="${k}" aria-label="Quitar foto ${k + 1}">×</button></div>`).join('')}${d.extras.fotos.length < 6 ? `<label class="ph-add"><b>+</b>Agregar foto<input type="file" accept="image/*" capture="environment" data-photo="x"></label>` : ''}</div></div>`;
+  }
+  if (st.k === 'firma') {
+    const res = resultado(d), rc = recipients(d, res.r);
+    let h = `<h2>Resumen y firma</h2>`;
+    h += resHTML(res.r, d);
+    if (res.r === 'NO APTA') h += `<div class="banner bad"><b>No conduzca esta camioneta.</b><span>${rc.length ? `Se avisará a ${esc(rc.map(x => x.Nombre).join(', '))} ${S.online ? 'al guardar' : 'cuando haya señal'}.` : 'Avise a su supervisor.'}</span></div>`;
+    else if (rc.length) h += `<div class="banner warn"><span>Se avisará a ${esc(rc.map(x => x.Nombre).join(', '))} de las observaciones.</span></div>`;
+    if (res.fall.length) h += `<div class="card"><h3>Ítems con falla (${res.fall.length})</h3>${fallasHTML(d, res)}</div>`;
+    const de = errOf('declara'), fe = errOf('firma');
+    h += `<label class="chk${de ? ' invalid' : ''}"><input type="checkbox" id="f-declara" data-f="declara" ${d.declara ? 'checked' : ''}><span>Declaro que revisé la camioneta y que la información de este checklist es verdadera.</span></label>${de ? `<span class="err-t">${esc(de.m)}</span>` : ''}
+      <div class="field"><span style="font-weight:600;font-size:15px">Firma de ${esc(d.conductor.nombre || 'conductor')}</span>
+      <div class="sig-box${fe ? ' invalid' : ''}" id="sig-box"><canvas id="sig" aria-label="Área para firmar con el dedo"></canvas><div class="sig-line"></div><div class="sig-hint" id="sig-hint">${d.firma ? '' : 'Firme aquí con el dedo'}</div></div>
+      ${fe ? `<span class="err-t">${esc(fe.m)}</span>` : ''}<button class="btn ghost sm" data-a="sigclear" style="align-self:flex-start">Borrar firma</button></div>`;
+    return h;
+  }
+  return '';
+}
+function countTxt(its) { const n = its.filter(i => evalItem(i, S.draft.resp[i.Orden]).estado !== 'PEND').length; return `${n} de ${its.length} respondidos`; }
+function itemHTML(i) {
+  const d = S.draft, r = d.resp[i.Orden] || {}, ev = evalItem(i, r);
+  const err = S.showErr ? validate(steps(d)[S.step], d).find(e => e.o === i.Orden) : null;
+  const cls = ev.estado === 'OK' ? 'is-ok' : ev.estado === 'FALLA' ? 'is-bad' : ev.estado === 'NA' ? 'is-na' : '';
+  let h = `<article class="item ${cls}${err ? ' invalid' : ''}" id="it-${i.Orden}"><div class="item-h"><span class="num">${i.Orden}</span><p class="q">${esc(i.Item)}</p>${yes(i.Critico) ? '<span class="tag crit">Crítico</span>' : ''}</div>`;
+  if (i.TipoRespuesta === 'FECHA') {
+    h += `<input class="input" type="date" id="d-${i.Orden}" data-date="${i.Orden}" value="${esc(r.v || '')}" aria-label="Fecha de vencimiento">`;
+    if (ev.aviso) h += `<span class="aviso ${ev.nivel}">${esc(ev.aviso)}</span>`;
+  } else {
+    const opts = answerOpts(i);
+    h += `<div class="seg${opts.length > 3 ? ' wrap' : ''}" role="group" aria-label="Respuesta">${opts.map(([v, t, c]) => `<button type="button" class="${c}" data-a="ans" data-o="${i.Orden}" data-v="${esc(v)}" aria-pressed="${r.v === v}">${esc(t)}</button>`).join('')}</div>`;
+  }
+  if (ev.estado === 'FALLA' && i.TipoRespuesta !== 'FECHA') {
+    const req = yes(i.ObsObligatoria);
+    h += `<div class="fallo"><textarea class="input${err && err.m === 'Describa la falla' ? ' invalid' : ''}" id="o-${i.Orden}" data-obs="${i.Orden}" rows="2" placeholder="${req ? 'Describa la falla (obligatorio)' : 'Comentario (opcional)'}">${esc(r.obs || '')}</textarea>`;
+    h += r.foto ? `<div class="ph thumb"><img src="${r.foto}" alt="Foto del ítem ${i.Orden}"><button data-a="delfoto" data-o="${i.Orden}" aria-label="Quitar foto">×</button></div>`
+      : `<label class="photo-btn">+ Foto de la falla (recomendado)<input type="file" accept="image/*" capture="environment" data-photo="${i.Orden}"></label>`;
+    h += `</div>`;
+  }
+  if (err) h += `<span class="err-t">${esc(err.m)}</span>`;
+  return h + `</article>`;
+}
+function updateItem(o) {
+  const i = applicableItems(S.draft).find(x => x.Orden === o), el = $('#it-' + o);
+  if (!i || !el) return;
+  el.outerHTML = itemHTML(i);
+  const st = steps(S.draft)[S.step];
+  if (st.k === 'cat') $('#count').textContent = countTxt(applicableItems(S.draft).filter(x => x.Categoria === st.cat));
+  renderNavMsg();
+}
+function resHTML(r, d) {
+  const sub = r === 'APTA' ? 'Todos los ítems en buen estado' : r === 'NO APTA' ? 'Hay ítems críticos con falla' : 'Hay fallas no críticas';
+  return `<div class="res ${resClass(r)}"><span class="k">Resultado · ${esc(fmtPat(d.vehiculo.patente))}</span><span class="v">${esc(r)}</span><span>${sub}</span></div>`;
+}
+function fallasHTML(d, res) {
+  const ord = [...res.crit, ...res.fall.filter(i => !res.crit.includes(i))];
+  return `<ul class="flist">${ord.map(i => { const r = d.resp[i.Orden] || {}, ev = evalItem(i, r); return `<li><span class="num">${i.Orden}</span><span class="q"><span>${esc(i.Item)}</span><small>${esc(respTxt(i, r))}${ev.aviso ? ' · ' + esc(ev.aviso) : ''}${r.obs ? ' · ' + esc(r.obs) : ''}</small>${r.foto ? `<span class="ph thumb" style="margin-top:6px"><img src="${r.foto}" alt="Foto del ítem ${i.Orden}"></span>` : ''}</span>${yes(i.Critico) ? '<span class="tag crit">Crítico</span>' : ''}</li>`; }).join('')}</ul>`;
+}
+function navHTML(st) {
+  const last = st.k === 'firma';
+  return `<div class="wrap nav-in"><div class="nav-msg" id="nav-msg"></div><div class="nav-btns"><button class="btn ghost" data-a="prev">${S.step === 0 ? 'Inicio' : 'Atrás'}</button><button class="btn primary" data-a="next">${last ? 'Firmar y guardar' : 'Siguiente'}</button></div></div>`;
+}
+function clearFieldErr(t) {
+  const fe = t.closest('.field'); if (!fe || !fe.classList.contains('invalid')) return;
+  if (errOf(t.dataset.f.split('.').pop())) return;
+  fe.classList.remove('invalid');
+  const et = fe.querySelector('.err-t'); if (et) et.remove();
+}
+function renderNavMsg() {
+  const el = $('#nav-msg'); if (!el) return;
+  if (!S.showErr) { el.textContent = ''; return; }
+  const e = validate(steps(S.draft)[S.step], S.draft);
+  el.textContent = e.length ? (e.length === 1 ? e[0].m : `Faltan ${e.length} datos por completar`) : '';
+}
+
+function detailHTML() {
+  const r = S.queue.find(x => x.id === S.detailId);
+  if (!r) return `<p>No se encontró el checklist.</p>`;
+  const res = resultado(r);
+  const st = r.status === 'enviado' ? `Enviado a SharePoint ${r.sentAt ? fmtCorto(r.sentAt) : ''}` : r.status === 'local' ? 'Guardado solo en este teléfono (modo demostración)' : 'Por enviar: se enviará cuando haya señal';
+  let h = `<button class="btn ghost sm" data-a="home" style="align-self:flex-start">← Volver</button>`;
+  if (r.example) h += `<div class="banner warn"><b>Checklist de ejemplo</b><span>Lo agregó la demostración para mostrar cómo se ve un registro guardado.</span></div>`;
+  h += resHTML(r.res, r);
+  h += `<div class="card"><dl class="kv"><dt>N° registro</dt><dd>${esc(r.id)}</dd><dt>Fecha</dt><dd>${fmtDT(r.savedAt)}</dd><dt>Conductor</dt><dd>${esc(r.conductor.nombre)} · ${esc(r.conductor.rut)}</dd><dt>Área</dt><dd>${esc(r.conductor.area)} · Turno ${esc(r.conductor.turno)}</dd><dt>Camioneta</dt><dd>${esc(r.vehiculo.nInterno)} · ${esc(r.vehiculo.marcaModelo)} · ${esc(motorTxt(r.vehiculo.tipoMotor))}</dd><dt>Faena</dt><dd>${esc(r.vehiculo.faena)}</dd><dt>Kilometraje</dt><dd>${esc(r.vehiculo.km)} km</dd><dt>Estado</dt><dd>${esc(st)}</dd>${r.sync && r.sync.mail && r.sync.mail !== '-' ? `<dt>Avisado a</dt><dd>${esc(r.sync.mail)}</dd>` : ''}</dl>${r.lastError ? `<p class="err-t">Último intento: ${esc(r.lastError)}</p>` : ''}</div>`;
+  if (res.fall.length) h += `<div class="card"><h3>Ítems con falla (${res.fall.length})</h3>${fallasHTML(r, res)}</div>`;
+  if (r.extras.obs || r.extras.fotos.length) h += `<div class="card"><h3>Observaciones y fotos</h3>${r.extras.obs ? `<p>${esc(r.extras.obs)}</p>` : ''}${r.extras.fotos.length ? `<div class="photos">${r.extras.fotos.map(p => `<div class="ph"><img src="${p}" alt=""></div>`).join('')}</div>` : ''}</div>`;
+  h += `<div class="card"><h3>Firma</h3>${r.firma ? `<img class="sig-img" src="${r.firma}" alt="Firma de ${esc(r.conductor.nombre)}">` : '<p class="small">Sin firma (registro de ejemplo).</p>'}</div>`;
+  return h;
+}
+function doneHTML() {
+  const r = S.queue.find(x => x.id === S.savedId);
+  if (!r) return '';
+  const rc = recipients(r, r.res);
+  let msg = DEMO ? 'Guardado en este teléfono. En modo demostración no se envía a SharePoint ni se mandan correos.'
+    : S.online ? 'Guardado. Enviando a SharePoint…' : 'Guardado en el teléfono. Se enviará solo cuando haya señal; no necesita hacer nada más.';
+  let h = `<h1>Checklist guardado</h1>${resHTML(r.res, r)}<p class="lead">${msg}</p>`;
+  if (r.res === 'NO APTA') h += `<div class="banner bad"><b>No conduzca esta camioneta.</b><span>${rc.length ? `Aviso para: ${esc(rc.map(x => `${x.Nombre} (${x.Correo})`).join(', '))}.` : 'No hay responsable configurado para esta faena: avise a su supervisor directamente.'}</span></div>`;
+  h += `<button class="btn primary block" data-a="home">Volver al inicio</button><button class="btn ghost block" data-a="open" data-id="${esc(r.id)}">Ver el checklist</button>`;
+  return h;
+}
+
+/* ============ Firma ============ */
+function mountSig() {
+  const c = $('#sig'); if (!c) return;
+  const dpr = Math.max(1, window.devicePixelRatio || 1), w = c.clientWidth, h = c.clientHeight;
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const g = c.getContext('2d'); g.scale(dpr, dpr);
+  g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#13296A'; g.fillStyle = '#13296A';
+  if (S.draft.firma) { const im = new Image(); im.onload = () => g.drawImage(im, 0, 0, w, h); im.src = S.draft.firma; }
+  let drawing = false, last = null;
+  const pt = e => { const b = c.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
+  c.onpointerdown = e => { e.preventDefault(); drawing = true; try { c.setPointerCapture(e.pointerId); } catch (_) { } last = pt(e); g.beginPath(); g.arc(last.x, last.y, 1.3, 0, Math.PI * 2); g.fill(); $('#sig-hint').textContent = ''; };
+  c.onpointermove = e => { if (!drawing) return; const p = pt(e); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke(); last = p; };
+  const end = () => {
+    if (!drawing) return; drawing = false;
+    const o = document.createElement('canvas'); o.width = c.width; o.height = c.height;
+    const og = o.getContext('2d'); og.fillStyle = '#FFFFFF'; og.fillRect(0, 0, o.width, o.height); og.drawImage(c, 0, 0);
+    S.draft.firma = o.toDataURL('image/png'); saveDraftSoon();
+    $('#sig-box').classList.remove('invalid'); renderNavMsg();
+  };
+  c.onpointerup = end; c.onpointercancel = end; c.onpointerleave = end;
+}
+
+/* ============ Fotos ============ */
+async function readPhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('No se pudo leer la foto')); i.src = url; });
+    const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.72);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* ============ Flujo del checklist ============ */
+function newDraft() {
+  const h = new Date().getHours(), pr = S.profile;
+  const d = {
+    id: genId(), startedAt: Date.now(), recordar: true,
+    conductor: pr ? { ...pr, turno: h >= 7 && h < 19 ? 'Día' : 'Noche' } : { nombre: '', rut: '', area: '', turno: h >= 7 && h < 19 ? 'Día' : 'Noche' },
+    vehiculo: { patente: '', nInterno: '', marcaModelo: '', tipoMotor: '', faena: '', km: '' },
+    resp: {}, extras: { obs: '', fotos: [] }, firma: null, declara: false, geo: null, step: 0
+  };
+  try { navigator.geolocation.getCurrentPosition(p => { if (S.draft === d) { d.geo = { lat: p.coords.latitude, lon: p.coords.longitude }; saveDraftSoon(); } }, () => { }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 120000 }); } catch (e) { }
+  return d;
+}
+function setPath(obj, path, val) { const ks = path.split('.'); let o = obj; for (let k = 0; k < ks.length - 1; k++) o = o[ks[k]]; o[ks[ks.length - 1]] = val; }
+function goStep(n) { S.step = n; S.draft.step = n; S.showErr = false; saveDraftSoon(); render(); window.scrollTo(0, 0); }
+
+async function saveChecklist() {
+  const d = S.draft, items = applicableItems(d);
+  const rec = JSON.parse(JSON.stringify(d));
+  rec.items = items; rec.savedAt = Date.now(); rec.res = resultado(rec).r;
+  rec.status = DEMO ? 'local' : 'pendiente'; rec.sync = {};
+  delete rec.step;
+  await Store.put('queue', rec);
+  if (d.recordar) { S.profile = { nombre: d.conductor.nombre, rut: d.conductor.rut, area: d.conductor.area }; await Store.put('kv', S.profile, 'profile'); }
+  else { S.profile = null; await Store.del('kv', 'profile'); }
+  await Store.del('kv', 'draft'); clearTimeout(draftTimer);
+  S.draft = null; S.queue = await Store.all('queue'); S.savedId = rec.id; S.view = 'done';
+  render(); window.scrollTo(0, 0);
+  syncAll();
+}
+
+/* ============ Eventos ============ */
+const actions = {
+  home() { S.view = 'home'; S.confirmDiscard = false; render(); window.scrollTo(0, 0); },
+  new() { S.draft = newDraft(); S.step = 0; S.view = 'wizard'; S.showErr = false; saveDraftSoon(); render(); window.scrollTo(0, 0); },
+  resume() { S.view = 'wizard'; render(); window.scrollTo(0, 0); },
+  exit() { if (S.draft) Store.put('kv', S.draft, 'draft'); S.view = 'home'; render(); window.scrollTo(0, 0); toast('Checklist guardado como borrador'); },
+  discard() { S.confirmDiscard = true; render(); },
+  'discard-no'() { S.confirmDiscard = false; render(); },
+  async 'discard-yes'() { S.draft = null; S.confirmDiscard = false; await Store.del('kv', 'draft'); render(); },
+  prev() { if (S.step === 0) return actions.exit(); goStep(S.step - 1); },
+  next() {
+    const all = steps(S.draft), st = all[S.step], e = validate(st, S.draft);
+    if (e.length) {
+      S.showErr = true; render(); renderNavMsg();
+      const first = st.k === 'cat' ? $('#it-' + e[0].o) : $('.invalid');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (st.k === 'firma') return saveChecklist();
+    goStep(S.step + 1);
+  },
+  setf(t) {
+    setPath(S.draft, t.dataset.f, t.dataset.v);
+    saveDraftSoon(); render();
+  },
+  ans(t) {
+    const o = +t.dataset.o, r = S.draft.resp[o] || (S.draft.resp[o] = {});
+    r.v = r.v === t.dataset.v ? '' : t.dataset.v;
+    saveDraftSoon(); updateItem(o);
+  },
+  allgood(t) {
+    for (const i of applicableItems(S.draft).filter(i => i.Categoria === t.dataset.cat && i.TipoRespuesta === 'B/M/N-A')) {
+      const r = S.draft.resp[i.Orden] || (S.draft.resp[i.Orden] = {});
+      if (!r.v) r.v = 'B';
+    }
+    saveDraftSoon(); const y = window.scrollY; render(); window.scrollTo(0, y);
+  },
+  delfoto(t) { const r = S.draft.resp[+t.dataset.o]; if (r) delete r.foto; saveDraftSoon(); updateItem(+t.dataset.o); },
+  delx(t) { S.draft.extras.fotos.splice(+t.dataset.k, 1); saveDraftSoon(); render(); },
+  sigclear() { S.draft.firma = null; saveDraftSoon(); mountSig(); $('#sig-hint').textContent = 'Firme aquí con el dedo'; },
+  open(t) { S.detailId = t.dataset.id; S.view = 'detail'; render(); window.scrollTo(0, 0); },
+  login() { Auth.login(); },
+  async install() { const ev = S.installEvt; if (!ev) return; ev.prompt(); try { await ev.userChoice; } catch (e) { } S.installEvt = null; render(); },
+  sync() { S.syncMsg = ''; syncAll(true); },
+  async refresh() { try { await refreshCatalog(); toast('Catálogo actualizado'); } catch (e) { toast(e.message); } render(); },
+  export() { exportExcel().catch(e => toast(e.message)); }
+};
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-a]'); if (!t) return;
+  const fn = actions[t.dataset.a]; if (fn) { e.preventDefault(); fn(t, e); }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.f && t.type !== 'checkbox') {
+    let v = t.value;
+    if (t.dataset.f === 'vehiculo.km') { v = v.replace(/[^\d]/g, ''); if (v !== t.value) t.value = v; }
+    setPath(S.draft, t.dataset.f, v); saveDraftSoon();
+    if (t.dataset.f === 'vehiculo.patente') {
+      const f = fleetFind(v);
+      if (f && normPat(v) !== S._lastFound) {
+        S._lastFound = normPat(v);
+        Object.assign(S.draft.vehiculo, { patente: normPat(f.Patente), nInterno: f.NInterno || '', marcaModelo: f.MarcaModelo || '', tipoMotor: String(f.TipoMotor || '').toUpperCase(), faena: f.Faena || S.draft.vehiculo.faena });
+        render(); const p = $('#f-patente'); p.focus(); p.setSelectionRange(p.value.length, p.value.length);
+      } else { $('.plate.lg b').textContent = fmtPat(v); }
+    }
+    if (S.showErr) { clearFieldErr(t); renderNavMsg(); }
+  } else if (t.dataset.obs) {
+    const r = S.draft.resp[+t.dataset.obs]; if (r) { r.obs = t.value; saveDraftSoon(); }
+    if (S.showErr && t.value.trim()) { t.classList.remove('invalid'); renderNavMsg(); }
+  }
+});
+document.addEventListener('change', async e => {
+  const t = e.target;
+  if (t.type === 'checkbox' && t.dataset.f) { setPath(S.draft, t.dataset.f, t.checked); saveDraftSoon(); if (S.showErr) renderNavMsg(); }
+  else if (t.dataset.f === 'conductor.rut' && t.value) { const f = rutFormat(t.value); t.value = f; S.draft.conductor.rut = f; saveDraftSoon(); }
+  else if (t.dataset.f === 'vehiculo.patente') { const n = normPat(t.value); t.value = n; S.draft.vehiculo.patente = n; saveDraftSoon(); }
+  else if (t.dataset.date) { const o = +t.dataset.date; (S.draft.resp[o] = S.draft.resp[o] || {}).v = t.value; saveDraftSoon(); updateItem(o); }
+  else if (t.dataset.photo && t.files && t.files[0]) {
+    try {
+      const url = await readPhoto(t.files[0]);
+      if (t.dataset.photo === 'x') { S.draft.extras.fotos.push(url); render(); }
+      else { const o = +t.dataset.photo; (S.draft.resp[o] = S.draft.resp[o] || {}).foto = url; updateItem(o); }
+      saveDraftSoon();
+    } catch (err) { toast(err.message); }
+  }
+});
+window.addEventListener('online', () => { S.online = true; renderBar(); if (S.view === 'home') render(); onlineTasks(); });
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.installEvt = e; if (S.view === 'home') render(); });
+window.addEventListener('appinstalled', () => { S.installEvt = null; if (S.view === 'home') render(); toast('App instalada'); });
+window.addEventListener('offline',() => { S.online = false; renderBar(); if (S.view === 'home') render(); });
+
+/* ============ Microsoft 365 (Entra ID + Graph) ============ */
+const Auth = {
+  pca: null, account: null, ready: null,
+  init() {
+    if (DEMO) return Promise.resolve();
+    if (this.ready) return this.ready;
+    this.ready = (async () => {
+      await loadScript(MSAL_URL);
+      this.pca = new msal.PublicClientApplication({
+        auth: { clientId: CFG.clientId, authority: `https://login.microsoftonline.com/${CFG.tenantId}`, redirectUri: CFG.redirectUri || (location.origin + location.pathname) },
+        cache: { cacheLocation: 'localStorage' }
+      });
+      await this.pca.initialize();
+      const r = await this.pca.handleRedirectPromise().catch(e => { toast('No se pudo iniciar sesión: ' + (e.errorMessage || e.message)); return null; });
+      this.account = (r && r.account) || this.pca.getAllAccounts()[0] || null;
+    })().catch(e => { this.ready = null; throw e; });
+    return this.ready;
+  },
+  async login() {
+    try { await this.init(); await this.pca.loginRedirect({ scopes: SCOPES, prompt: 'select_account' }); }
+    catch (e) { toast('No se pudo abrir el inicio de sesión. Revise la señal.'); }
+  },
+  async token() {
+    if (!this.account) throw Object.assign(new Error('Debe iniciar sesión con Microsoft'), { auth: true });
+    try { return (await this.pca.acquireTokenSilent({ scopes: SCOPES, account: this.account })).accessToken; }
+    catch (e) { throw Object.assign(new Error('La sesión de Microsoft expiró'), { auth: true }); }
+  }
+};
+async function graph(path, { method = 'GET', body, headers = {} } = {}) {
+  const tok = await Auth.token();
+  const isBlob = body instanceof Blob;
+  const r = await fetch(GRAPH + path, { method, headers: { Authorization: 'Bearer ' + tok, ...(body && !isBlob ? { 'Content-Type': 'application/json' } : {}), ...headers }, body: isBlob ? body : body ? JSON.stringify(body) : undefined });
+  if (!r.ok) { let m = ''; try { m = (await r.json()).error.message; } catch (_) { } throw Object.assign(new Error(`Microsoft 365 respondió ${r.status}${m ? ': ' + m : ''}`), { status: r.status, auth: r.status === 401 }); }
+  if (r.status === 202 || r.status === 204) return null;
+  return r.json();
+}
+const encPath = p => p.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+async function drivePath() {
+  let id = await Store.get('kv', 'siteId');
+  if (!id) { id = (await graph(`/sites/${CFG.siteHostname}:${CFG.sitePath}`)).id; await Store.put('kv', id, 'siteId'); }
+  return `/sites/${id}/drive`;
+}
+async function wbPath() { return `${await drivePath()}/root:/${encPath(CFG.workbookPath)}:/workbook`; }
+function dataUrlBlob(u) { const [h, b] = u.split(','); const mime = h.match(/:(.*?);/)[1]; const bin = atob(b); const a = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) a[k] = bin.charCodeAt(k); return new Blob([a], { type: mime }); }
+async function upload(path, dataUrl) {
+  const blob = dataUrlBlob(dataUrl);
+  const r = await graph(`${await drivePath()}/root:/${encPath(path)}:/content`, { method: 'PUT', body: blob, headers: { 'Content-Type': blob.type } });
+  return r.webUrl;
+}
+async function addRows(table, rows) { if (rows.length) await graph(`${await wbPath()}/tables/${table}/rows/add`, { method: 'POST', body: { values: rows } }); }
+
+function headerRow(r, recips) {
+  const res = resultado(r), its = applicableItems(r), s = r.sync || {};
+  const comb = its.find(i => i.TipoRespuesta === 'OPCION_UNICA' && /combustible/i.test(i.Item));
+  return [r.id, fmtDT(r.savedAt), r.conductor.nombre, r.conductor.rut, r.conductor.area, r.conductor.turno, r.vehiculo.faena, r.vehiculo.patente, r.vehiculo.nInterno, r.vehiculo.marcaModelo, motorTxt(r.vehiculo.tipoMotor), r.vehiculo.km,
+    comb ? respTxt(comb, r.resp[comb.Orden]) : '', res.r, res.fall.map(i => `${i.Orden}. ${i.Item}`).join('; '), res.crit.map(i => `${i.Orden}. ${i.Item}`).join('; '), r.extras.obs,
+    r.geo ? r.geo.lat.toFixed(6) : '', r.geo ? r.geo.lon.toFixed(6) : '', s.firma || '', Object.keys(s.fotos || {}).filter(k => k.startsWith('x')).map(k => s.fotos[k]).join(' | '),
+    recips.join(', '), (navigator.userAgentData && navigator.userAgentData.platform) || (/(iPhone|iPad|Android)/.exec(navigator.userAgent) || ['Web'])[0], fmtDT(Date.now())];
+}
+function respRows(r) {
+  const s = r.sync || {};
+  return applicableItems(r).map(i => { const x = r.resp[i.Orden] || {}, ev = evalItem(i, x); return [r.id, fmtDT(r.savedAt), r.vehiculo.patente, i.Orden, i.Categoria, i.Item, respTxt(i, x), yes(i.Critico) ? 'Si' : 'No', ev.estado, x.obs || ev.aviso || '', (s.fotos || {})['i' + i.Orden] || '']; });
+}
+function mailHTML(r, res) {
+  const row = (k, v) => `<tr><td style="padding:4px 12px 4px 0;color:#555">${esc(k)}</td><td style="padding:4px 0"><b>${esc(v)}</b></td></tr>`;
+  const color = res.r === 'NO APTA' ? '#B3302A' : '#8F5600';
+  return `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#17202A">
+    <p style="font-size:20px;font-weight:700;color:${color};margin:0 0 8px">Camioneta ${esc(fmtPat(r.vehiculo.patente))}: ${esc(res.r)}</p>
+    <table style="border-collapse:collapse">${row('Conductor', `${r.conductor.nombre} (${r.conductor.rut})`)}${row('Área / turno', `${r.conductor.area} · ${r.conductor.turno}`)}${row('Camioneta', `${r.vehiculo.nInterno} · ${r.vehiculo.marcaModelo}`)}${row('Faena', r.vehiculo.faena)}${row('Kilometraje', r.vehiculo.km + ' km')}${row('Fecha del checklist', fmtDT(r.savedAt))}${row('N° registro', r.id)}</table>
+    <p style="margin:16px 0 6px;font-weight:700">Ítems con falla</p>
+    <ul style="margin:0;padding-left:18px">${[...res.crit, ...res.fall.filter(i => !res.crit.includes(i))].map(i => { const x = r.resp[i.Orden] || {}; const f = (r.sync.fotos || {})['i' + i.Orden]; return `<li style="margin-bottom:4px">${yes(i.Critico) ? '<b style="color:#B3302A">[CRÍTICO]</b> ' : ''}${esc(i.Item)}: ${esc(respTxt(i, x))}${x.obs ? ' · ' + esc(x.obs) : ''}${f ? ` · <a href="${esc(f)}">foto</a>` : ''}</li>`; }).join('')}</ul>
+    ${r.extras.obs ? `<p style="margin:12px 0 0"><b>Observaciones:</b> ${esc(r.extras.obs)}</p>` : ''}
+    ${r.sync.firma ? `<p style="margin:12px 0 0"><a href="${esc(r.sync.firma)}">Ver firma y fotos en SharePoint</a></p>` : ''}
+    <p style="margin:16px 0 0;color:#777;font-size:12px">Enviado automáticamente por la app Checklist camionetas.</p></div>`;
+}
+async function syncOne(r) {
+  r.sync = r.sync || {}; r.sync.fotos = r.sync.fotos || {};
+  const save = () => Store.put('queue', r);
+  const d = new Date(r.savedAt), folder = `${CFG.photosFolder}/${d.getFullYear()}-${p2(d.getMonth() + 1)}/${r.id}`;
+  if (r.firma && !r.sync.firma) { r.sync.firma = await upload(`${folder}/firma.png`, r.firma); await save(); }
+  for (const i of applicableItems(r)) { const x = r.resp[i.Orden]; if (x && x.foto && !r.sync.fotos['i' + i.Orden]) { r.sync.fotos['i' + i.Orden] = await upload(`${folder}/item-${i.Orden}.jpg`, x.foto); await save(); } }
+  for (let k = 0; k < r.extras.fotos.length; k++) if (!r.sync.fotos['x' + k]) { r.sync.fotos['x' + k] = await upload(`${folder}/foto-${k + 1}.jpg`, r.extras.fotos[k]); await save(); }
+  const res = resultado(r), rc = recipients(r, res.r).map(x => x.Correo);
+  if (!r.sync.header) { await addRows('tblChecklists', [headerRow(r, rc)]); r.sync.header = true; await save(); }
+  if (!r.sync.resp) { await addRows('tblRespuestas', respRows(r)); r.sync.resp = true; await save(); }
+  if (!r.sync.mail) {
+    if (rc.length) await graph('/me/sendMail', { method: 'POST', body: { message: { subject: `[${res.r}] Camioneta ${fmtPat(r.vehiculo.patente)} · ${r.vehiculo.faena} · ${fmtCorto(r.savedAt)}`, importance: res.r === 'NO APTA' ? 'high' : 'normal', body: { contentType: 'HTML', content: mailHTML(r, res) }, toRecipients: rc.map(a => ({ emailAddress: { address: a } })) }, saveToSentItems: true } });
+    r.sync.mail = rc.join(', ') || '-'; await save();
+  }
+}
+let syncTimer = null;
+async function syncAll(manual) {
+  if (DEMO || S.syncing || !navigator.onLine) return;
+  S.syncing = true; renderBar();
+  try {
+    await Auth.init();
+    if (!Auth.account) { S.needsLogin = false; return; }
+    const pend = (await Store.all('queue')).filter(r => r.status === 'pendiente').sort((a, b) => a.savedAt - b.savedAt);
+    for (const r of pend) {
+      try { await syncOne(r); r.status = 'enviado'; r.sentAt = Date.now(); r.lastError = null; S.lastSync = r.sentAt; S.syncMsg = ''; await Store.put('queue', r); }
+      catch (e) {
+        r.lastError = e.message; await Store.put('queue', r);
+        if (e.auth) { S.needsLogin = true; break; }
+        S.syncMsg = 'No se pudo enviar: ' + e.message + '. Se reintentará.';
+        if (!e.status) break; // sin conexión real
+      }
+    }
+    if (pend.length && !S.syncMsg && !S.needsLogin && manual !== undefined) toast('Checklists enviados a SharePoint');
+  } catch (e) { S.syncMsg = 'No se pudo conectar con Microsoft 365. Se reintentará.'; }
+  finally {
+    S.syncing = false; S.queue = await Store.all('queue');
+    if (S.view === 'home' || S.view === 'done' || S.view === 'detail') render(); else renderBar();
+    clearTimeout(syncTimer);
+    if (S.queue.some(r => r.status === 'pendiente')) syncTimer = setTimeout(() => syncAll(), 90000);
+  }
+}
+async function refreshCatalog() {
+  await Auth.init();
+  const base = await wbPath();
+  const get = async t => { const v = (await graph(`${base}/tables/${t}/range?$select=values`)).values; const [h, ...rows] = v; return rows.filter(x => x.some(c => String(c).trim() !== '')).map(x => Object.fromEntries(h.map((k, n) => [k, typeof x[n] === 'string' ? x[n].trim() : x[n]]))); };
+  const [items, vehiculos, responsables] = await Promise.all([get('tblItems'), get('tblVehiculos'), get('tblResponsables')]);
+  items.forEach(i => { i.Orden = Number(i.Orden); });
+  if (!items.length) throw new Error('La tabla de ítems en SharePoint está vacía');
+  S.catalog = { items, vehiculos, responsables, source: 'sharepoint', updatedAt: Date.now() };
+  await Store.put('kv', S.catalog, 'catalog');
+}
+async function onlineTasks() {
+  if (DEMO) return;
+  try {
+    await Auth.init();
+    if (Auth.account) {
+      S.needsLogin = false;
+      if (!S.catalog.updatedAt || Date.now() - S.catalog.updatedAt > 3600000) await refreshCatalog().catch(() => { });
+      await syncAll();
+    }
+  } catch (e) { /* sin señal: se reintenta con el evento online */ }
+  if (S.view === 'home') render();
+}
+
+/* ============ Exportar (modo demostración, fuera de un visor incrustado) ============ */
+async function exportExcel() {
+  await loadScript(XLSX_URL);
+  const H1 = ['ID', 'FechaHora', 'Conductor', 'RUT', 'EmpresaArea', 'Turno', 'Faena', 'Patente', 'NInterno', 'MarcaModelo', 'TipoMotor', 'Kilometraje', 'Combustible', 'Resultado', 'ItemsMalos', 'CriticosFallidos', 'Observaciones', 'Latitud', 'Longitud', 'FirmaURL', 'FotosURL', 'NotificadoA', 'Dispositivo', 'RecibidoEn'];
+  const H2 = ['ID_Checklist', 'FechaHora', 'Patente', 'Orden', 'Categoria', 'Item', 'Respuesta', 'Critico', 'Estado', 'Observacion', 'FotoURL'];
+  const recs = [...S.queue].sort((a, b) => a.savedAt - b.savedAt);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([H1, ...recs.map(r => headerRow(r, recipients(r, r.res).map(x => x.Correo)))]), 'Checklists');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([H2, ...recs.flatMap(respRows)]), 'Respuestas');
+  XLSX.writeFile(wb, `checklists_${fmtDT(Date.now()).slice(0, 10)}.xlsx`);
+}
+
+/* ============ Inicio ============ */
+function exampleRecord() {
+  const d = new Date(); d.setHours(7, 42, 0, 0); d.setDate(d.getDate() - 1);
+  const rec = { id: 'CK-EJEMPLO-0001', example: true, savedAt: d.getTime(), startedAt: d.getTime(), status: 'local', sync: {},
+    conductor: { nombre: 'Conductor de ejemplo', rut: '11.111.111-1', area: 'Mantención', turno: 'Día' },
+    vehiculo: { patente: 'PLRT21', nInterno: 'CM-014', marcaModelo: 'Toyota Hilux 2.4 (EJEMPLO)', tipoMotor: 'DIESEL', faena: 'Faena Norte', km: '84512' },
+    resp: {}, extras: { obs: 'Ruido leve en suspensión delantera al pasar por calamina.', fotos: [] }, firma: null, declara: true, geo: null };
+  rec.items = applicableItems(rec);
+  const venc = new Date(); venc.setFullYear(venc.getFullYear() + 2);
+  const vencInt = new Date(); vencInt.setDate(vencInt.getDate() + 18);
+  const iso = x => `${x.getFullYear()}-${p2(x.getMonth() + 1)}-${p2(x.getDate())}`;
+  for (const i of rec.items) {
+    if (i.TipoRespuesta === 'FECHA') rec.resp[i.Orden] = { v: iso(i.Orden === 6 ? vencInt : venc) };
+    else if (i.TipoRespuesta === 'OPCION_UNICA') rec.resp[i.Orden] = { v: splitOpts(i.Opciones)[2] || splitOpts(i.Opciones)[0] };
+    else rec.resp[i.Orden] = { v: i.TipoRespuesta === 'B/M/N-A' ? 'B' : 'SI' };
+  }
+  rec.resp[8] = { v: 'M', obs: 'Plumilla izquierda gastada, deja franjas' };
+  rec.resp[24] = { v: 'M', obs: 'Malla con una rotura en la esquina trasera' };
+  rec.res = resultado(rec).r;
+  return rec;
+}
+(async function boot() {
+  const cat = await Store.get('kv', 'catalog');
+  S.catalog = cat && cat.items && cat.items.length ? cat : { ...BUILTIN, source: 'integrado', updatedAt: 0 };
+  S.profile = (await Store.get('kv', 'profile')) || null;
+  S.draft = (await Store.get('kv', 'draft')) || null;
+  if (S.draft) S.step = Math.min(S.draft.step || 0, steps(S.draft).length - 1);
+  S.queue = await Store.all('queue') || [];
+  if (EMBED && DEMO && !S.queue.length && !(await Store.get('kv', 'seeded'))) {
+    const ex = exampleRecord(); await Store.put('queue', ex); await Store.put('kv', true, 'seeded'); S.queue = [ex];
+  }
+  render();
+  if (!DEMO) { try { await Auth.init(); } catch (e) { } render(); if (navigator.onLine) onlineTasks(); }
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator && window.self === window.top) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>

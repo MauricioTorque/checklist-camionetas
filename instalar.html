@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instalar Checklist camionetas</title>
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+/* Cartel imprimible (A4) con el QR para instalar la app. Pensado para pegar en la garita o en la camioneta. */
+:root { --ink: #17202A; --muted: #586370; --accent: #F2A900; --paper: #FFFFFF; --line: #CDD3CC;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif; --f-body: "Barlow", system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #E9ECE8; color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.45; }
+.tools { max-width: 760px; margin: 0 auto; padding: 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tools input { flex: 1 1 260px; min-height: 44px; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 8px; font: inherit; }
+.tools button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; font-family: var(--f-display); font-size: 18px; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
+.sheet { max-width: 760px; margin: 0 auto 32px; background: var(--paper); padding: 40px 32px; border-top: 14px solid var(--accent); display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+h1 { font-family: var(--f-display); font-size: 46px; line-height: 1; margin: 0; text-transform: uppercase; }
+.lead { font-size: 20px; color: var(--muted); margin: 0; max-width: 30em; }
+#qr { width: min(360px, 80vw); aspect-ratio: 1; }
+#qr svg { width: 100%; height: 100%; display: block; }
+.url { font-weight: 600; font-size: 16px; word-break: break-all; }
+.steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; text-align: left; }
+.steps div { border: 1.5px solid var(--line); border-radius: 10px; padding: 16px; }
+.steps h2 { font-family: var(--f-display); font-size: 22px; margin: 0 0 8px; text-transform: uppercase; }
+.steps ol { margin: 0; padding-left: 20px; }
+.foot { font-size: 14px; color: var(--muted); }
+@media (max-width: 560px) { .steps { grid-template-columns: 1fr; } h1 { font-size: 36px; } .sheet { padding: 28px 16px; } }
+@media print { body { background: #fff; } .tools { display: none; } .sheet { margin: 0; max-width: none; } }
+</style>
+</head>
+<body>
+<div class="tools">
+  <input id="url" aria-label="Dirección de la app">
+  <button id="print">Imprimir cartel</button>
+</div>
+<main class="sheet">
+  <h1>Checklist de camionetas</h1>
+  <p class="lead">Escanee el código con la cámara del celular para abrir la app e instalarla.</p>
+  <div id="qr" role="img" aria-label="Código QR de la app"></div>
+  <p class="url" id="url-txt"></p>
+  <section class="steps">
+    <div><h2>Android</h2><ol><li>Escanee el código con la cámara.</li><li>Se abre en Chrome: toque <b>Instalar app</b>.</li><li>Abra la app desde el ícono e inicie sesión con su cuenta de la empresa.</li></ol></div>
+    <div><h2>iPhone</h2><ol><li>Escanee el código con la cámara.</li><li>En Safari, toque <b>Compartir</b> y luego <b>Agregar a inicio</b>.</li><li>Abra la app desde el ícono e inicie sesión con su cuenta de la empresa.</li></ol></div>
+  </section>
+  <p class="foot">La primera vez se necesita señal. Después la app funciona sin conexión.</p>
+</main>
+<script>
+const input = document.getElementById('url');
+input.value = location.href.replace(/instalar\.html.*$/, '');
+function draw() {
+  const u = input.value.trim();
+  document.getElementById('url-txt').textContent = u;
+  const box = document.getElementById('qr');
+  if (typeof qrcode === 'undefined') { box.textContent = 'No se pudo generar el QR: revise la conexión a internet de este PC.'; return; }
+  const q = qrcode(0, 'M'); q.addData(u); q.make();
+  box.innerHTML = q.createSvgTag({ cellSize: 8, margin: 2, scalable: true });
+}
+input.addEventListener('input', draw);
+document.getElementById('print').addEventListener('click', () => window.print());
+draw();
+</script>
+</body>
+</html>
