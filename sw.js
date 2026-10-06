@@ -1,5 +1,5 @@
 // Service worker: guarda la app en el teléfono para abrirla sin señal.
-const VERSION = 'checklist-20261005113244';
+const VERSION = 'checklist-20261005211836';
 const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 const CDN = ['https://cdn.jsdelivr.net/', 'https://cdnjs.cloudflare.com/', 'https://fonts.googleapis.com/', 'https://fonts.gstatic.com/'];
 

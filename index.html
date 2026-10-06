@@ -387,7 +387,7 @@ function validate(st, d) {
     const c = d.conductor;
     if (c.nombre.trim().length < 3) e.push({ f: 'nombre', m: 'Escriba su nombre completo' });
     if (!rutValid(c.rut)) e.push({ f: 'rut', m: 'RUT no válido. Revise el dígito verificador' });
-    if (!c.area.trim()) e.push({ f: 'area', m: 'Indique su empresa o área' });
+    if (!c.area.trim()) e.push({ f: 'area', m: 'Indique la faena o contrato' });
     if (!c.turno) e.push({ f: 'turno', m: 'Seleccione el turno' });
   } else if (st.k === 'vehiculo') {
     const v = d.vehiculo;
@@ -404,6 +404,11 @@ function validate(st, d) {
   } else if (st.k === 'firma') {
     if (!d.declara) e.push({ f: 'declara', m: 'Confirme la declaración' });
     if (!d.firma) e.push({ f: 'firma', m: 'Falta su firma' });
+    acompList(d).forEach((a, k) => {
+      if ((a.nombre || '').trim().length < 3) e.push({ f: `a${k}-nombre`, m: 'Escriba el nombre completo del acompañante' });
+      if (!rutValid(a.rut)) e.push({ f: `a${k}-rut`, m: 'RUT no válido. Revise el dígito verificador' });
+      if (!a.firma) e.push({ f: `a${k}-firma`, m: 'Falta la firma del acompañante' });
+    });
   }
   return e;
 }
@@ -419,7 +424,7 @@ function render() {
     const st = steps(S.draft)[S.step];
     main.innerHTML = stepHTML(st);
     nav.hidden = false; nav.innerHTML = navHTML(st);
-    if (st.k === 'firma') mountSig();
+    if (st.k === 'firma') mountSigs();
   }
 }
 function renderBar() {
@@ -500,7 +505,7 @@ function stepHTML(st) {
     return `<h2>Sus datos</h2>
       ${fieldHTML('nombre', 'Nombre completo', `<input class="input" id="f-nombre" data-f="conductor.nombre" autocomplete="name" value="${esc(c.nombre)}">`)}
       ${fieldHTML('rut', 'RUT', `<input class="input" id="f-rut" data-f="conductor.rut" inputmode="text" autocapitalize="characters" placeholder="12.345.678-5" value="${esc(c.rut)}">`)}
-      ${fieldHTML('area', 'Empresa o área', `<input class="input" id="f-area" data-f="conductor.area" placeholder="Ej.: Mantención planta" value="${esc(c.area)}">`)}
+      ${fieldHTML('area', 'Faena o contrato', `<input class="input" id="f-area" data-f="conductor.area" placeholder="Ej.: Contrato 9100078704" value="${esc(c.area)}">`)}
       <div class="field"><span style="font-weight:600;font-size:15px">Turno</span>${segHTML('conductor.turno', c.turno, [['Día', 'Día'], ['Noche', 'Noche']], 'turno')}</div>
       <label class="chk"><input type="checkbox" id="f-recordar" data-f="recordar" ${d.recordar ? 'checked' : ''}><span>Recordar mis datos en este teléfono para el próximo checklist</span></label>`;
   }
@@ -543,11 +548,18 @@ function stepHTML(st) {
     if (res.r === 'NO APTA') h += `<div class="banner bad"><b>No conduzca esta camioneta.</b><span>${rc.length ? `Se avisará a ${esc(rc.map(x => x.Nombre).join(', '))} ${S.online ? 'al guardar' : 'cuando haya señal'}.` : 'Avise a su supervisor.'}</span></div>`;
     else if (rc.length) h += `<div class="banner warn"><span>Se avisará a ${esc(rc.map(x => x.Nombre).join(', '))} de las observaciones.</span></div>`;
     if (res.fall.length) h += `<div class="card"><h3>Ítems con falla (${res.fall.length})</h3>${fallasHTML(d, res)}</div>`;
-    const de = errOf('declara'), fe = errOf('firma');
-    h += `<label class="chk${de ? ' invalid' : ''}"><input type="checkbox" id="f-declara" data-f="declara" ${d.declara ? 'checked' : ''}><span>Declaro que revisé la camioneta y que la información de este checklist es verdadera.</span></label>${de ? `<span class="err-t">${esc(de.m)}</span>` : ''}
-      <div class="field"><span style="font-weight:600;font-size:15px">Firma de ${esc(d.conductor.nombre || 'conductor')}</span>
-      <div class="sig-box${fe ? ' invalid' : ''}" id="sig-box"><canvas id="sig" aria-label="Área para firmar con el dedo"></canvas><div class="sig-line"></div><div class="sig-hint" id="sig-hint">${d.firma ? '' : 'Firme aquí con el dedo'}</div></div>
-      ${fe ? `<span class="err-t">${esc(fe.m)}</span>` : ''}<button class="btn ghost sm" data-a="sigclear" style="align-self:flex-start">Borrar firma</button></div>`;
+    const de = errOf('declara');
+    h += `<label class="chk${de ? ' invalid' : ''}"><input type="checkbox" id="f-declara" data-f="declara" ${d.declara ? 'checked' : ''}><span>Declaro que revisé la camioneta y que la información de este checklist es verdadera.</span></label>${de ? `<span class="err-t">${esc(de.m)}</span>` : ''}`;
+    h += sigFieldHTML('c', `Firma de ${d.conductor.nombre || 'conductor'}`, d.firma, errOf('firma'));
+    const acs = d.acompanantes || [];
+    h += `<label class="chk"><input type="checkbox" id="f-acomp" ${d.tieneAcomp ? 'checked' : ''}><span>Cuenta con copiloto o acompañantes</span></label>`;
+    if (d.tieneAcomp) {
+      h += acs.map((a, k) => `<div class="card"><div class="cat-tools"><h3>${k === 0 ? 'Copiloto o acompañante 1' : `Acompañante ${k + 1}`}</h3><button class="btn ghost sm" data-a="delacomp" data-k="${k}">Quitar</button></div>
+        ${fieldHTML(`a${k}-nombre`, 'Nombre completo', `<input class="input" id="a${k}-nombre" data-f="acompanantes.${k}.nombre" data-err="a${k}-nombre" autocomplete="off" value="${esc(a.nombre)}">`)}
+        ${fieldHTML(`a${k}-rut`, 'RUT', `<input class="input" id="a${k}-rut" data-f="acompanantes.${k}.rut" data-err="a${k}-rut" autocapitalize="characters" placeholder="12.345.678-5" value="${esc(a.rut)}">`)}
+        ${sigFieldHTML('a' + k, 'Firma', a.firma, errOf(`a${k}-firma`))}</div>`).join('');
+      h += `<button class="btn ghost block" data-a="addacomp">+ Agregar otro acompañante</button>`;
+    }
     return h;
   }
   return '';
@@ -597,7 +609,7 @@ function navHTML(st) {
 }
 function clearFieldErr(t) {
   const fe = t.closest('.field'); if (!fe || !fe.classList.contains('invalid')) return;
-  if (errOf(t.dataset.f.split('.').pop())) return;
+  if (errOf(t.dataset.err || t.dataset.f.split('.').pop())) return;
   fe.classList.remove('invalid');
   const et = fe.querySelector('.err-t'); if (et) et.remove();
 }
@@ -616,10 +628,12 @@ function detailHTML() {
   let h = `<button class="btn ghost sm" data-a="home" style="align-self:flex-start">← Volver</button>`;
   if (r.example) h += `<div class="banner warn"><b>Checklist de ejemplo</b><span>Lo agregó la demostración para mostrar cómo se ve un registro guardado.</span></div>`;
   h += resHTML(r.res, r);
-  h += `<div class="card"><dl class="kv"><dt>N° registro</dt><dd>${esc(r.id)}</dd><dt>Fecha</dt><dd>${fmtDT(r.savedAt)}</dd><dt>Conductor</dt><dd>${esc(r.conductor.nombre)} · ${esc(r.conductor.rut)}</dd><dt>Área</dt><dd>${esc(r.conductor.area)} · Turno ${esc(r.conductor.turno)}</dd><dt>Camioneta</dt><dd>${esc(r.vehiculo.nInterno)} · ${esc(r.vehiculo.marcaModelo)} · ${esc(motorTxt(r.vehiculo.tipoMotor))}</dd><dt>Faena</dt><dd>${esc(r.vehiculo.faena)}</dd><dt>Kilometraje</dt><dd>${esc(r.vehiculo.km)} km</dd><dt>Estado</dt><dd>${esc(st)}</dd>${r.sync && r.sync.mail && r.sync.mail !== '-' ? `<dt>Avisado a</dt><dd>${esc(r.sync.mail)}</dd>` : ''}</dl>${r.lastError ? `<p class="err-t">Último intento: ${esc(r.lastError)}</p>` : ''}</div>`;
+  h += `<div class="card"><dl class="kv"><dt>N° registro</dt><dd>${esc(r.id)}</dd><dt>Fecha</dt><dd>${fmtDT(r.savedAt)}</dd><dt>Conductor</dt><dd>${esc(r.conductor.nombre)} · ${esc(r.conductor.rut)}</dd><dt>Faena/contrato</dt><dd>${esc(r.conductor.area)} · Turno ${esc(r.conductor.turno)}</dd><dt>Camioneta</dt><dd>${esc(r.vehiculo.nInterno)} · ${esc(r.vehiculo.marcaModelo)} · ${esc(motorTxt(r.vehiculo.tipoMotor))}</dd><dt>Faena</dt><dd>${esc(r.vehiculo.faena)}</dd><dt>Kilometraje</dt><dd>${esc(r.vehiculo.km)} km</dd><dt>Estado</dt><dd>${esc(st)}</dd>${r.sync && r.sync.mail && r.sync.mail !== '-' ? `<dt>Avisado a</dt><dd>${esc(r.sync.mail)}</dd>` : ''}</dl>${r.lastError ? `<p class="err-t">Último intento: ${esc(r.lastError)}</p>` : ''}</div>`;
   if (res.fall.length) h += `<div class="card"><h3>Ítems con falla (${res.fall.length})</h3>${fallasHTML(r, res)}</div>`;
   if (r.extras.obs || r.extras.fotos.length) h += `<div class="card"><h3>Observaciones y fotos</h3>${r.extras.obs ? `<p>${esc(r.extras.obs)}</p>` : ''}${r.extras.fotos.length ? `<div class="photos">${r.extras.fotos.map(p => `<div class="ph"><img src="${p}" alt=""></div>`).join('')}</div>` : ''}</div>`;
-  h += `<div class="card"><h3>Firma</h3>${r.firma ? `<img class="sig-img" src="${r.firma}" alt="Firma de ${esc(r.conductor.nombre)}">` : '<p class="small">Sin firma (registro de ejemplo).</p>'}</div>`;
+  h += `<div class="card"><h3>Firma del conductor</h3>${r.firma ? `<img class="sig-img" src="${r.firma}" alt="Firma de ${esc(r.conductor.nombre)}">` : '<p class="small">Sin firma (registro de ejemplo).</p>'}</div>`;
+  const acs = acompList(r);
+  if (acs.length) h += `<div class="card"><h3>Copiloto y acompañantes (${acs.length})</h3>${acs.map(a => `<div class="field"><b>${esc(a.nombre)} · ${esc(a.rut)}</b>${a.firma ? `<img class="sig-img" src="${a.firma}" alt="Firma de ${esc(a.nombre)}">` : ''}</div>`).join('')}</div>`;
   return h;
 }
 function doneHTML() {
@@ -635,26 +649,37 @@ function doneHTML() {
 }
 
 /* ============ Firma ============ */
-function mountSig() {
-  const c = $('#sig'); if (!c) return;
+// Cada firma se identifica con una clave: 'c' = conductor, 'a0', 'a1'… = acompañantes
+const getSig = key => key === 'c' ? S.draft.firma : (S.draft.acompanantes[+key.slice(1)] || {}).firma;
+function setSig(key, url) { if (key === 'c') S.draft.firma = url; else { const a = S.draft.acompanantes[+key.slice(1)]; if (a) a.firma = url; } }
+function sigFieldHTML(key, label, has, err) {
+  return `<div class="field"><span style="font-weight:600;font-size:15px">${esc(label)}</span>
+    <div class="sig-box${err ? ' invalid' : ''}" id="sig-box-${key}"><canvas data-sig="${key}" aria-label="Área para firmar con el dedo"></canvas><div class="sig-line"></div><div class="sig-hint" id="sig-hint-${key}">${has ? '' : 'Firme aquí con el dedo'}</div></div>
+    ${err ? `<span class="err-t">${esc(err.m)}</span>` : ''}<button class="btn ghost sm" data-a="sigclear" data-sig="${key}" style="align-self:flex-start">Borrar firma</button></div>`;
+}
+function mountSigs() { document.querySelectorAll('canvas[data-sig]').forEach(mountSig); }
+function mountSig(c) {
+  const key = c.dataset.sig;
   const dpr = Math.max(1, window.devicePixelRatio || 1), w = c.clientWidth, h = c.clientHeight;
   c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
   const g = c.getContext('2d'); g.scale(dpr, dpr);
   g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#13296A'; g.fillStyle = '#13296A';
-  if (S.draft.firma) { const im = new Image(); im.onload = () => g.drawImage(im, 0, 0, w, h); im.src = S.draft.firma; }
+  const saved = getSig(key);
+  if (saved) { const im = new Image(); im.onload = () => g.drawImage(im, 0, 0, w, h); im.src = saved; }
   let drawing = false, last = null;
   const pt = e => { const b = c.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
-  c.onpointerdown = e => { e.preventDefault(); drawing = true; try { c.setPointerCapture(e.pointerId); } catch (_) { } last = pt(e); g.beginPath(); g.arc(last.x, last.y, 1.3, 0, Math.PI * 2); g.fill(); $('#sig-hint').textContent = ''; };
+  c.onpointerdown = e => { e.preventDefault(); drawing = true; try { c.setPointerCapture(e.pointerId); } catch (_) { } last = pt(e); g.beginPath(); g.arc(last.x, last.y, 1.3, 0, Math.PI * 2); g.fill(); $('#sig-hint-' + key).textContent = ''; };
   c.onpointermove = e => { if (!drawing) return; const p = pt(e); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke(); last = p; };
   const end = () => {
     if (!drawing) return; drawing = false;
     const o = document.createElement('canvas'); o.width = c.width; o.height = c.height;
     const og = o.getContext('2d'); og.fillStyle = '#FFFFFF'; og.fillRect(0, 0, o.width, o.height); og.drawImage(c, 0, 0);
-    S.draft.firma = o.toDataURL('image/png'); saveDraftSoon();
-    $('#sig-box').classList.remove('invalid'); renderNavMsg();
+    setSig(key, o.toDataURL('image/png')); saveDraftSoon();
+    $('#sig-box-' + key).classList.remove('invalid'); renderNavMsg();
   };
   c.onpointerup = end; c.onpointercancel = end; c.onpointerleave = end;
 }
+const acompList = r => r.tieneAcomp ? (r.acompanantes || []) : [];
 
 /* ============ Fotos ============ */
 async function readPhoto(file) {
@@ -675,7 +700,8 @@ function newDraft() {
     id: genId(), startedAt: Date.now(), recordar: true,
     conductor: pr ? { ...pr, turno: h >= 7 && h < 19 ? 'Día' : 'Noche' } : { nombre: '', rut: '', area: '', turno: h >= 7 && h < 19 ? 'Día' : 'Noche' },
     vehiculo: { patente: '', nInterno: '', marcaModelo: '', tipoMotor: '', faena: '', km: '' },
-    resp: {}, extras: { obs: '', fotos: [] }, firma: null, declara: false, geo: null, step: 0
+    resp: {}, extras: { obs: '', fotos: [] }, firma: null, declara: false, geo: null, step: 0,
+    tieneAcomp: false, acompanantes: []
   };
   try { navigator.geolocation.getCurrentPosition(p => { if (S.draft === d) { d.geo = { lat: p.coords.latitude, lon: p.coords.longitude }; saveDraftSoon(); } }, () => { }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 120000 }); } catch (e) { }
   return d;
@@ -737,7 +763,18 @@ const actions = {
   },
   delfoto(t) { const r = S.draft.resp[+t.dataset.o]; if (r) delete r.foto; saveDraftSoon(); updateItem(+t.dataset.o); },
   delx(t) { S.draft.extras.fotos.splice(+t.dataset.k, 1); saveDraftSoon(); render(); },
-  sigclear() { S.draft.firma = null; saveDraftSoon(); mountSig(); $('#sig-hint').textContent = 'Firme aquí con el dedo'; },
+  sigclear(t) { const key = t.dataset.sig; setSig(key, null); saveDraftSoon(); mountSig($(`canvas[data-sig="${key}"]`)); $('#sig-hint-' + key).textContent = 'Firme aquí con el dedo'; },
+  addacomp() {
+    S.draft.acompanantes.push({ nombre: '', rut: '', firma: null }); saveDraftSoon();
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+    const k = S.draft.acompanantes.length - 1, el = $('#a' + k + '-nombre');
+    if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); }
+  },
+  delacomp(t) {
+    S.draft.acompanantes.splice(+t.dataset.k, 1);
+    if (!S.draft.acompanantes.length) S.draft.tieneAcomp = false;
+    saveDraftSoon(); const y = window.scrollY; render(); window.scrollTo(0, y);
+  },
   open(t) { S.detailId = t.dataset.id; S.view = 'detail'; render(); window.scrollTo(0, 0); },
   login() { Auth.login(); },
   async install() { const ev = S.installEvt; if (!ev) return; ev.prompt(); try { await ev.userChoice; } catch (e) { } S.installEvt = null; render(); },
@@ -771,8 +808,14 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', async e => {
   const t = e.target;
-  if (t.type === 'checkbox' && t.dataset.f) { setPath(S.draft, t.dataset.f, t.checked); saveDraftSoon(); if (S.showErr) renderNavMsg(); }
-  else if (t.dataset.f === 'conductor.rut' && t.value) { const f = rutFormat(t.value); t.value = f; S.draft.conductor.rut = f; saveDraftSoon(); }
+  if (t.id === 'f-acomp') {
+    S.draft.tieneAcomp = t.checked;
+    if (!S.draft.acompanantes) S.draft.acompanantes = [];
+    if (t.checked && !S.draft.acompanantes.length) S.draft.acompanantes.push({ nombre: '', rut: '', firma: null });
+    saveDraftSoon(); const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
+  else if (t.type === 'checkbox' && t.dataset.f) { setPath(S.draft, t.dataset.f, t.checked); saveDraftSoon(); if (S.showErr) renderNavMsg(); }
+  else if (/\.rut$/.test(t.dataset.f || '') && t.value) { const f = rutFormat(t.value); t.value = f; setPath(S.draft, t.dataset.f, f); saveDraftSoon(); }
   else if (t.dataset.f === 'vehiculo.patente') { const n = normPat(t.value); t.value = n; S.draft.vehiculo.patente = n; saveDraftSoon(); }
   else if (t.dataset.date) { const o = +t.dataset.date; (S.draft.resp[o] = S.draft.resp[o] || {}).v = t.value; saveDraftSoon(); updateItem(o); }
   else if (t.dataset.photo && t.files && t.files[0]) {
@@ -846,7 +889,12 @@ function headerRow(r, recips) {
   return [r.id, fmtDT(r.savedAt), r.conductor.nombre, r.conductor.rut, r.conductor.area, r.conductor.turno, r.vehiculo.faena, r.vehiculo.patente, r.vehiculo.nInterno, r.vehiculo.marcaModelo, motorTxt(r.vehiculo.tipoMotor), r.vehiculo.km,
     comb ? respTxt(comb, r.resp[comb.Orden]) : '', res.r, res.fall.map(i => `${i.Orden}. ${i.Item}`).join('; '), res.crit.map(i => `${i.Orden}. ${i.Item}`).join('; '), r.extras.obs,
     r.geo ? r.geo.lat.toFixed(6) : '', r.geo ? r.geo.lon.toFixed(6) : '', s.firma || '', Object.keys(s.fotos || {}).filter(k => k.startsWith('x')).map(k => s.fotos[k]).join(' | '),
-    recips.join(', '), (navigator.userAgentData && navigator.userAgentData.platform) || (/(iPhone|iPad|Android)/.exec(navigator.userAgent) || ['Web'])[0], fmtDT(Date.now())];
+    recips.join(', '), (navigator.userAgentData && navigator.userAgentData.platform) || (/(iPhone|iPad|Android)/.exec(navigator.userAgent) || ['Web'])[0], fmtDT(Date.now()),
+    acompList(r).map(a => `${a.nombre} (${a.rut})`).join('; ')];
+}
+function acompRows(r) {
+  const s = (r.sync || {}).acomp || {};
+  return acompList(r).map((a, k) => [r.id, fmtDT(r.savedAt), r.vehiculo.patente, k + 1, a.nombre, a.rut, s['a' + k] || '']);
 }
 function respRows(r) {
   const s = r.sync || {};
@@ -857,7 +905,7 @@ function mailHTML(r, res) {
   const color = res.r === 'NO APTA' ? '#B3302A' : '#8F5600';
   return `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#17202A">
     <p style="font-size:20px;font-weight:700;color:${color};margin:0 0 8px">Camioneta ${esc(fmtPat(r.vehiculo.patente))}: ${esc(res.r)}</p>
-    <table style="border-collapse:collapse">${row('Conductor', `${r.conductor.nombre} (${r.conductor.rut})`)}${row('Área / turno', `${r.conductor.area} · ${r.conductor.turno}`)}${row('Camioneta', `${r.vehiculo.nInterno} · ${r.vehiculo.marcaModelo}`)}${row('Faena', r.vehiculo.faena)}${row('Kilometraje', r.vehiculo.km + ' km')}${row('Fecha del checklist', fmtDT(r.savedAt))}${row('N° registro', r.id)}</table>
+    <table style="border-collapse:collapse">${row('Conductor', `${r.conductor.nombre} (${r.conductor.rut})`)}${row('Faena o contrato / turno', `${r.conductor.area} · ${r.conductor.turno}`)}${acompList(r).length ? row('Copiloto y acompañantes', acompList(r).map(a => `${a.nombre} (${a.rut})`).join(', ')) : ''}${row('Camioneta', `${r.vehiculo.nInterno} · ${r.vehiculo.marcaModelo}`)}${row('Faena', r.vehiculo.faena)}${row('Kilometraje', r.vehiculo.km + ' km')}${row('Fecha del checklist', fmtDT(r.savedAt))}${row('N° registro', r.id)}</table>
     <p style="margin:16px 0 6px;font-weight:700">Ítems con falla</p>
     <ul style="margin:0;padding-left:18px">${[...res.crit, ...res.fall.filter(i => !res.crit.includes(i))].map(i => { const x = r.resp[i.Orden] || {}; const f = (r.sync.fotos || {})['i' + i.Orden]; return `<li style="margin-bottom:4px">${yes(i.Critico) ? '<b style="color:#B3302A">[CRÍTICO]</b> ' : ''}${esc(i.Item)}: ${esc(respTxt(i, x))}${x.obs ? ' · ' + esc(x.obs) : ''}${f ? ` · <a href="${esc(f)}">foto</a>` : ''}</li>`; }).join('')}</ul>
     ${r.extras.obs ? `<p style="margin:12px 0 0"><b>Observaciones:</b> ${esc(r.extras.obs)}</p>` : ''}
@@ -869,11 +917,14 @@ async function syncOne(r) {
   const save = () => Store.put('queue', r);
   const d = new Date(r.savedAt), folder = `${CFG.photosFolder}/${d.getFullYear()}-${p2(d.getMonth() + 1)}/${r.id}`;
   if (r.firma && !r.sync.firma) { r.sync.firma = await upload(`${folder}/firma.png`, r.firma); await save(); }
+  r.sync.acomp = r.sync.acomp || {};
+  for (const [k, a] of acompList(r).entries()) if (a.firma && !r.sync.acomp['a' + k]) { r.sync.acomp['a' + k] = await upload(`${folder}/firma-acompanante-${k + 1}.png`, a.firma); await save(); }
   for (const i of applicableItems(r)) { const x = r.resp[i.Orden]; if (x && x.foto && !r.sync.fotos['i' + i.Orden]) { r.sync.fotos['i' + i.Orden] = await upload(`${folder}/item-${i.Orden}.jpg`, x.foto); await save(); } }
   for (let k = 0; k < r.extras.fotos.length; k++) if (!r.sync.fotos['x' + k]) { r.sync.fotos['x' + k] = await upload(`${folder}/foto-${k + 1}.jpg`, r.extras.fotos[k]); await save(); }
   const res = resultado(r), rc = recipients(r, res.r).map(x => x.Correo);
   if (!r.sync.header) { await addRows('tblChecklists', [headerRow(r, rc)]); r.sync.header = true; await save(); }
   if (!r.sync.resp) { await addRows('tblRespuestas', respRows(r)); r.sync.resp = true; await save(); }
+  if (!r.sync.acompRows) { await addRows('tblAcompanantes', acompRows(r)); r.sync.acompRows = true; await save(); }
   if (!r.sync.mail) {
     if (rc.length) await graph('/me/sendMail', { method: 'POST', body: { message: { subject: `[${res.r}] Camioneta ${fmtPat(r.vehiculo.patente)} · ${r.vehiculo.faena} · ${fmtCorto(r.savedAt)}`, importance: res.r === 'NO APTA' ? 'high' : 'normal', body: { contentType: 'HTML', content: mailHTML(r, res) }, toRecipients: rc.map(a => ({ emailAddress: { address: a } })) }, saveToSentItems: true } });
     r.sync.mail = rc.join(', ') || '-'; await save();
@@ -931,12 +982,14 @@ async function onlineTasks() {
 /* ============ Exportar (modo demostración, fuera de un visor incrustado) ============ */
 async function exportExcel() {
   await loadScript(XLSX_URL);
-  const H1 = ['ID', 'FechaHora', 'Conductor', 'RUT', 'EmpresaArea', 'Turno', 'Faena', 'Patente', 'NInterno', 'MarcaModelo', 'TipoMotor', 'Kilometraje', 'Combustible', 'Resultado', 'ItemsMalos', 'CriticosFallidos', 'Observaciones', 'Latitud', 'Longitud', 'FirmaURL', 'FotosURL', 'NotificadoA', 'Dispositivo', 'RecibidoEn'];
+  const H1 = ['ID', 'FechaHora', 'Conductor', 'RUT', 'FaenaContrato', 'Turno', 'Faena', 'Patente', 'NInterno', 'MarcaModelo', 'TipoMotor', 'Kilometraje', 'Combustible', 'Resultado', 'ItemsMalos', 'CriticosFallidos', 'Observaciones', 'Latitud', 'Longitud', 'FirmaURL', 'FotosURL', 'NotificadoA', 'Dispositivo', 'RecibidoEn', 'Acompanantes'];
+  const H3 = ['ID_Checklist', 'FechaHora', 'Patente', 'N', 'Nombre', 'RUT', 'FirmaURL'];
   const H2 = ['ID_Checklist', 'FechaHora', 'Patente', 'Orden', 'Categoria', 'Item', 'Respuesta', 'Critico', 'Estado', 'Observacion', 'FotoURL'];
   const recs = [...S.queue].sort((a, b) => a.savedAt - b.savedAt);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([H1, ...recs.map(r => headerRow(r, recipients(r, r.res).map(x => x.Correo)))]), 'Checklists');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([H2, ...recs.flatMap(respRows)]), 'Respuestas');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([H3, ...recs.flatMap(acompRows)]), 'Acompanantes');
   XLSX.writeFile(wb, `checklists_${fmtDT(Date.now()).slice(0, 10)}.xlsx`);
 }
 
