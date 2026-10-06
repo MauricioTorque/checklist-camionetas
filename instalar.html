@@ -17,6 +17,7 @@ body { margin: 0; background: #E9ECE8; color: var(--ink); font-family: var(--f-b
 .tools input { flex: 1 1 260px; min-height: 44px; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 8px; font: inherit; }
 .tools button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; font-family: var(--f-display); font-size: 18px; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
 .sheet { max-width: 760px; margin: 0 auto 32px; background: var(--paper); padding: 40px 32px; border-top: 14px solid var(--accent); display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+.logo { height: 72px; width: auto; max-width: 100%; }
 h1 { font-family: var(--f-display); font-size: 46px; line-height: 1; margin: 0; text-transform: uppercase; }
 .lead { font-size: 20px; color: var(--muted); margin: 0; max-width: 30em; }
 #qr { width: min(360px, 80vw); aspect-ratio: 1; }
@@ -37,6 +38,7 @@ h1 { font-family: var(--f-display); font-size: 46px; line-height: 1; margin: 0; 
   <button id="print">Imprimir cartel</button>
 </div>
 <main class="sheet">
+  <img class="logo" src="mt-logo-black.png" alt="Metal Torque">
   <h1>Checklist de camionetas</h1>
   <p class="lead">Escanee el código con la cámara del celular para abrir la app e instalarla.</p>
   <div id="qr" role="img" aria-label="Código QR de la app"></div>
