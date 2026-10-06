@@ -447,6 +447,7 @@ function homeHTML() {
   const pend = S.queue.filter(r => r.status === 'pendiente').length;
   let h = `<section class="hero"><h1>Checklist de camioneta</h1><p class="lead">Revise la camioneta antes de conducir. Funciona sin señal: lo que guarde se envía solo cuando vuelva la conexión.</p></section>`;
   if (DEMO) h += `<div class="banner info"><b>Modo demostración</b><span>Los checklists se guardan solo en este teléfono y no se envían correos. Al conectar la app con SharePoint, se envían al Excel de la empresa y se avisa al responsable.</span></div>`;
+  else if (!Auth.account && S.authBlocked) h += `<div class="banner bad"><b>La app todavía no está autorizada en la empresa</b><span>Microsoft indicó que un administrador de TI debe aprobar la app "Checklist camionetas". Mientras tanto, los checklists quedan guardados en este teléfono y se enviarán cuando esté aprobada y usted inicie sesión.</span><button class="btn sm dark" data-a="login" ${S.online ? '' : 'disabled'}>Reintentar inicio de sesión</button></div>`;
   else if (!Auth.account) h += `<div class="card"><p><b>Inicie sesión con su cuenta de la empresa</b></p><p class="small">Se hace una sola vez y necesita señal. Después la app funciona sin conexión.</p><button class="btn dark" data-a="login" ${S.online ? '' : 'disabled'}>Iniciar sesión con Microsoft</button></div>`;
   else if (S.needsLogin) h += `<div class="banner warn"><b>Su sesión de Microsoft expiró</b><span>Los checklists siguen guardados en el teléfono. Inicie sesión para enviarlos.</span><button class="btn sm dark" data-a="login" ${S.online ? '' : 'disabled'}>Iniciar sesión</button></div>`;
 
@@ -467,9 +468,13 @@ function homeHTML() {
   }
 
   if (!DEMO && S.queue.length) {
-    h += `<div class="card"><div class="stat"><span class="n">${pend}</span><div class="t"><b>${pend === 1 ? 'Checklist por enviar' : 'Checklists por enviar'}</b><p class="small">${pend ? (S.online ? (S.syncing ? 'Enviando…' : 'Se enviarán en unos segundos.') : 'Se enviarán cuando haya señal.') : 'Todo enviado a SharePoint.'}${S.lastSync ? ' Último envío: ' + fmtCorto(S.lastSync) + '.' : ''}</p></div></div>`;
+    h += `<div class="card"><div class="stat"><span class="n">${pend}</span><div class="t"><b>${pend === 1 ? 'Checklist por enviar' : 'Checklists por enviar'}</b><p class="small">${!pend ? 'Todo enviado a SharePoint.'
+      : !Auth.account ? (S.authBlocked ? 'No se pueden enviar: falta que TI apruebe la app. Quedan guardados en el teléfono.' : 'No se pueden enviar: falta iniciar sesión con Microsoft (botón de arriba). Quedan guardados en el teléfono.')
+      : S.needsLogin ? 'No se pueden enviar: inicie sesión de nuevo (botón de arriba).'
+      : !S.online ? 'Se enviarán cuando haya señal.'
+      : S.syncing ? 'Enviando…' : S.syncMsg ? 'Se reintentará en unos minutos.' : 'Se enviarán en unos segundos.'}${S.lastSync ? ' Último envío: ' + fmtCorto(S.lastSync) + '.' : ''}</p></div></div>`;
     if (S.syncMsg) h += `<p class="err-t">${esc(S.syncMsg)}</p>`;
-    if (pend) h += `<button class="btn ghost sm" data-a="sync" ${S.online && !S.syncing ? '' : 'disabled'}>Enviar ahora</button>`;
+    if (pend && Auth.account) h += `<button class="btn ghost sm" data-a="sync" ${S.online && !S.syncing ? '' : 'disabled'}>Enviar ahora</button>`;
     h += `</div>`;
   }
 
@@ -845,7 +850,14 @@ const Auth = {
         cache: { cacheLocation: 'localStorage' }
       });
       await this.pca.initialize();
-      const r = await this.pca.handleRedirectPromise().catch(e => { toast('No se pudo iniciar sesión: ' + (e.errorMessage || e.message)); return null; });
+      const r = await this.pca.handleRedirectPromise().catch(e => {
+        const m = `${e.errorCode || ''} ${e.errorMessage || e.message || ''}`;
+        // AADSTS65001/90094/90095 o access_denied: el inquilino exige aprobación de un administrador
+        if (/AADSTS(65001|90094|90095)|consent|access_denied/i.test(m)) { S.authBlocked = true; Store.put('kv', true, 'authBlocked'); }
+        else toast('No se pudo iniciar sesión: ' + (e.errorMessage || e.message));
+        return null;
+      });
+      if (r && r.account) { S.authBlocked = false; Store.del('kv', 'authBlocked'); }
       this.account = (r && r.account) || this.pca.getAllAccounts()[0] || null;
     })().catch(e => { this.ready = null; throw e; });
     return this.ready;
@@ -1018,6 +1030,7 @@ function exampleRecord() {
   const cat = await Store.get('kv', 'catalog');
   S.catalog = cat && cat.items && cat.items.length ? cat : { ...BUILTIN, source: 'integrado', updatedAt: 0 };
   S.profile = (await Store.get('kv', 'profile')) || null;
+  S.authBlocked = !!(await Store.get('kv', 'authBlocked'));
   S.draft = (await Store.get('kv', 'draft')) || null;
   if (S.draft) S.step = Math.min(S.draft.step || 0, steps(S.draft).length - 1);
   S.queue = await Store.all('queue') || [];
